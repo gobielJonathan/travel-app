@@ -1,6 +1,7 @@
 import { computed } from "vue";
 import { crewMembers, tripDays, tripEvents } from "~/data/trip";
 import type { BillItem, TripEvent } from "~/types/trip";
+import { useInvite } from "~/composables/useInvite";
 
 type SyncState = "synced" | "pending" | "conflict" | "error";
 
@@ -126,11 +127,12 @@ export function useTrip() {
   }
 
   async function syncWorkspace() {
+    const { inviteCode } = useInvite();
     state.value.syncState = "pending";
     try {
       await $fetch("/api/workspaces/sync", {
         method: "POST",
-        body: { workspaceCode: "ROAM-LA24-7KQ" },
+        body: { workspaceCode: inviteCode.value },
       });
       state.value.syncState = "synced";
       state.value.syncError = "";

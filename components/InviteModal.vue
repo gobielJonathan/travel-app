@@ -4,7 +4,7 @@ const emit = defineEmits<{ close: []; copied: [] }>();
 const copied = ref(false);
 const { inviteCode } = useInvite();
 async function copyInvite() {
-  await navigator.clipboard?.writeText(inviteCode);
+  await navigator.clipboard?.writeText(inviteCode.value);
   copied.value = true;
   emit("copied");
   window.setTimeout(() => {

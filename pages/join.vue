@@ -42,7 +42,7 @@ function submit() {
             id="invite-code"
             v-model="code"
             autocomplete="one-time-code"
-            placeholder="ROAM-LA24-7KQ"
+            placeholder="ROAM-XXXXXX"
             aria-describedby="invite-error"
             :aria-invalid="Boolean(error)"
             @input="error = ''"
