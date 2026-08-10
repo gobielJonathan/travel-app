@@ -1,0 +1,22 @@
+import type { CrewMember, TripDay, TripEvent } from '~/types/trip'
+
+export const tripDays: TripDay[] = [
+  { label: 'Wed', date: '18', month: 'Sep', count: 3 },
+  { label: 'Thu', date: '19', month: 'Sep', count: 4 },
+  { label: 'Fri', date: '20', month: 'Sep', count: 3 },
+  { label: 'Sat', date: '21', month: 'Sep', count: 2 },
+]
+
+export const tripEvents: TripEvent[] = [
+  { id: 'gjusta', day: 0, time: '09:00', title: 'Breakfast at Gjusta', place: 'Gjusta Bakery · Venice', tag: 'Food', tone: 'gold', coords: [33.995, -118.457], travelTime: '8 min walk', transport: 'Walking', bill: [] },
+  { id: 'venice', day: 0, time: '11:30', title: 'Venice Beach boardwalk', place: 'Venice Beach · 12 min walk', tag: 'Explore', tone: 'blue', coords: [33.985, -118.469], travelTime: '12 min walk', transport: 'Walking', bill: [] },
+  { id: 'griffith', day: 1, time: '14:00', title: 'Drive to Griffith Observatory', place: 'Transit · 38 min · $2.50', tag: 'Transit', tone: 'mint', coords: [34.118, -118.300], travelTime: '38 min · $2.50', transport: 'Transit', bill: [] },
+  { id: 'misfit', day: 1, time: '18:30', title: 'Sunset and dinner', place: 'The Misfit · Santa Monica', tag: 'Food', tone: 'coral', coords: [34.010, -118.496], travelTime: '22 min transit', transport: 'Transit', bill: [] },
+]
+
+export const crewMembers: CrewMember[] = [
+  { initials: 'JM', name: 'Jordan Miller', role: 'Organizer' },
+  { initials: 'AK', name: 'Avery Kim', role: 'Traveler', tone: 'coral' },
+  { initials: 'DL', name: 'Drew Lee', role: 'Traveler', tone: 'blue' },
+  { initials: '+1', name: 'One invite open', role: 'Pending', tone: 'gold' },
+]
