@@ -18,8 +18,11 @@ const {
 
 onMounted(() => {
   void syncWorkspace();
+  void tripSync.connect(() => undefined);
 });
 const route = useRoute();
+const { inviteCode } = useInvite();
+const tripSync = useTripSync(inviteCode);
 const assistantOpen = ref(false);
 const discussionPreview = ref(false);
 const discussionMessages = ref<{ role: "user" | "assistant"; content: string }[]>([]);
@@ -259,6 +262,14 @@ function submitEvent(input: {
         <div class="event-detail-dot" :class="selectedEvent.tone"></div>
         <h2>{{ selectedEvent.title }}</h2>
         <p class="detail-place">⌖ {{ selectedEvent.place }}</p>
+        <a
+          class="map-action"
+          :href="`https://www.google.com/maps/search/?api=1&query=${selectedEvent.coords[0]},${selectedEvent.coords[1]}`"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Open in Google Maps ↗
+        </a>
         <div class="detail-block">
           <span class="section-label">Schedule</span
           ><strong>{{ selectedEvent.time }} · {{ dayTitle }}</strong>
