@@ -1,0 +1,83 @@
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: flex-end;
+  background: #17252299;
+}
+.modal-surface,
+.invite-modal,
+.invite-dialog {
+  width: 100%;
+  max-height: 90svh;
+  overflow: auto;
+  position: relative;
+  padding: 38px 20px calc(28px + env(safe-area-inset-bottom));
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--graphite);
+  box-shadow: 0 -12px 35px #17252233;
+}
+.modal-close,
+.close-btn,
+.invite-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 26px;
+}
+.invite-code-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 14px;
+  border: 1px dashed var(--blue);
+  background: #527d8712;
+  color: var(--night);
+  font:
+    500 14px IBM Plex Mono,
+    monospace;
+}
+.invite-copy {
+  min-height: 40px;
+  border: 0;
+  background: var(--blue);
+  color: var(--white);
+  padding: 9px 12px;
+  font-size: 10px;
+  font-weight: 800;
+}
+.invite-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 24px;
+}
+.invite-join-link {
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 800;
+}
+@media (min-width: 801px) {
+  .modal-overlay:has(.invite-modal),
+  .modal-overlay:has(.invite-dialog) {
+    align-items: center;
+    justify-content: center;
+  }
+  .invite-modal,
+  .invite-dialog {
+    width: min(480px, calc(100% - 40px));
+    max-height: 90vh;
+    padding: 42px 32px;
+    box-shadow: 10px 10px var(--blue);
+  }
+}

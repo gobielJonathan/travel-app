@@ -1,0 +1,284 @@
+.landing {
+  min-height: 100svh;
+  padding: 0 20px;
+  background: var(--paper);
+}
+.landing-nav {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+}
+.landing-status {
+  display: none;
+}
+.landing-join {
+  margin-left: auto;
+  color: var(--graphite);
+  font:
+    500 10px IBM Plex Mono,
+    monospace;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+.landing-hero {
+  max-width: 1180px;
+  margin: 8vh auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 42px;
+}
+.landing-copy h1 {
+  max-width: 650px;
+  margin: 18px 0;
+  color: var(--night);
+  font:
+    400 clamp(54px, 15vw, 106px)/0.86 Instrument Serif,
+    serif;
+  letter-spacing: -0.05em;
+}
+.landing-copy h1 em {
+  color: var(--orange);
+}
+.landing-copy p {
+  max-width: 420px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.landing-stats {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  margin-top: 32px;
+}
+.landing-stats > div {
+  flex: 0 0 116px;
+}
+.landing-stats strong {
+  display: block;
+  color: var(--blue);
+  font:
+    500 12px IBM Plex Mono,
+    monospace;
+}
+.landing-stats span {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.landing-chat {
+  position: relative;
+  padding: 16px;
+  border: 1px solid var(--night);
+  background: var(--night);
+  color: var(--white);
+  box-shadow: 10px 10px var(--blue);
+}
+.landing-chat::before {
+  position: absolute;
+  top: -25px;
+  left: 16px;
+  color: var(--orange);
+  content: "LIVE ROUTE / 01";
+  font:
+    500 10px IBM Plex Mono,
+    monospace;
+}
+.chat-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #ffffff22;
+  padding-bottom: 14px;
+}
+.assistant-orb {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--orange);
+  color: var(--white);
+}
+.chat-header strong,
+.chat-header small {
+  display: block;
+}
+.chat-header small {
+  color: #b5cfca;
+  font-size: 10px;
+}
+.chat-header > span {
+  margin-left: auto;
+  color: #b5cfca;
+  font:
+    9px IBM Plex Mono,
+    monospace;
+}
+.chat-stream {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  height: 240px;
+  overflow: auto;
+  padding: 18px 0;
+}
+.landing-message {
+  max-width: 86%;
+  padding: 12px;
+  border-left: 2px solid var(--blue);
+  background: #ffffff0d;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.landing-message.user {
+  margin-left: auto;
+  border-color: var(--orange);
+  background: #e26d4520;
+}
+.chat-compose {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  border: 2px solid var(--blue);
+  border-radius: 3px;
+  background: #10201e;
+  box-shadow: 4px 4px 0 var(--orange);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+.chat-compose:focus-within {
+  border-color: var(--yellow);
+  box-shadow: 4px 4px 0 var(--yellow);
+}
+.chat-compose textarea {
+  width: 100%;
+  min-height: 64px;
+  resize: none;
+  border: 0;
+  border-bottom: 1px solid #ffffff4d;
+  outline: 0;
+  background: transparent;
+  color: var(--white);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.chat-compose textarea::placeholder {
+  color: #c5cec8;
+}
+.chat-compose button {
+  min-height: 44px;
+  border: 1px solid var(--yellow);
+  border-radius: 2px;
+  background: var(--yellow);
+  color: var(--night);
+  font-size: 11px;
+  font-weight: 800;
+}
+.chat-compose button:hover:not(:disabled) {
+  background: var(--white);
+}
+.chat-compose button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+.chat-prompts {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 14px 0;
+}
+.chat-prompts button {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 7px 9px;
+  border: 1px solid #ffffff30;
+  border-radius: 20px;
+  background: transparent;
+  color: var(--paper);
+  font-size: 10px;
+}
+.start-button {
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  background: var(--paper);
+  color: var(--night);
+  text-align: left;
+  font-size: 11px;
+  font-weight: 800;
+}
+.start-button span {
+  float: right;
+  color: var(--orange);
+}
+.landing-foot {
+  max-width: 1180px;
+  margin: 10vh auto 0;
+  padding: 20px 0;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font:
+    10px/2 IBM Plex Mono,
+    monospace;
+}
+.landing-foot span {
+  display: block;
+}
+@media (min-width: 801px) {
+  .landing {
+    padding: 0 6vw;
+  }
+  .landing-nav {
+    height: 82px;
+  }
+  .landing-status {
+    display: block;
+    margin-left: 48px;
+    color: var(--muted);
+    font:
+      10px IBM Plex Mono,
+      monospace;
+    text-transform: uppercase;
+  }
+  .landing-hero {
+    margin-top: 12vh;
+    display: grid;
+    grid-template-columns: 1fr 480px;
+    gap: 110px;
+    align-items: center;
+  }
+  .landing-chat {
+    padding: 20px;
+    box-shadow: 16px 20px var(--blue);
+  }
+  .chat-stream {
+    height: 285px;
+  }
+  .chat-compose {
+    flex-direction: row;
+  }
+  .chat-compose button {
+    align-self: end;
+    padding: 10px 16px;
+  }
+  .landing-stats {
+    overflow: visible;
+  }
+  .landing-stats > div {
+    flex: initial;
+  }
+  .landing-foot {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 16vh;
+    line-height: 1;
+  }
+  .landing-foot span {
+    display: block;
+  }
+}

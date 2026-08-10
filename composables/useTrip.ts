@@ -2,13 +2,18 @@ import { computed } from "vue";
 import { crewMembers, tripDays, tripEvents } from "~/data/trip";
 import type { BillItem, TripEvent } from "~/types/trip";
 
+type SyncState = "synced" | "pending" | "conflict" | "error";
+
 export function useTrip() {
   const state = useState("trip-state", () => ({
     title: "Los Angeles Trip",
     activeDay: 1,
     days: tripDays.map((day) => ({ ...day })),
     events: tripEvents.map((event) => ({ ...event, bill: [...event.bill] })),
-    synced: true,
+    syncState: "synced" as SyncState,
+    syncError: "",
+    conflicts: [] as string[],
+    deletedEventIds: [] as string[],
   }));
   const title = computed({
     get: () => state.value.title,
@@ -49,7 +54,30 @@ export function useTrip() {
       count: 0,
     });
     state.value.activeDay = state.value.days.length - 1;
-    state.value.synced = false;
+    state.value.syncState = "pending";
+  }
+
+  function updateDayDate(index: number, date: Pick<(typeof tripDays)[number], "label" | "date" | "month">) {
+    const day = state.value.days[index];
+    if (!day) return false;
+    Object.assign(day, date);
+    state.value.syncState = "pending";
+    return true;
+  }
+
+  function deleteEvent(id: string) {
+    const index = state.value.events.findIndex((event) => event.id === id);
+    if (index < 0) return false;
+    state.value.events.splice(index, 1);
+    state.value.deletedEventIds.push(id);
+    state.value.syncState = "pending";
+    return true;
+  }
+
+  function resolveConflict(id: string, choice: "local" | "remote") {
+    state.value.conflicts = state.value.conflicts.filter((conflict) => conflict !== id);
+    if (!state.value.conflicts.length) state.value.syncState = "synced";
+    return choice;
   }
 
   function addEvent(input: Pick<TripEvent, "title" | "place" | "time" | "tag" | "coords">) {
@@ -67,7 +95,7 @@ export function useTrip() {
       food: [],
       todos: [],
     });
-    state.value.synced = false;
+    state.value.syncState = "pending";
   }
   function replaceItinerary(itinerary: {
     title: string;
@@ -85,16 +113,31 @@ export function useTrip() {
       tone: "purple",
       bill: [],
     }));
-    state.value.synced = false;
+    state.value.syncState = "pending";
   }
 
   function addBillItem(event: TripEvent, item: BillItem) {
     event.bill.push(item);
-    state.value.synced = false;
+    state.value.syncState = "pending";
   }
   function toggleSettled(item: BillItem) {
     item.settled = !item.settled;
-    state.value.synced = false;
+    state.value.syncState = "pending";
+  }
+
+  async function syncWorkspace() {
+    state.value.syncState = "pending";
+    try {
+      await $fetch("/api/workspaces/sync", {
+        method: "POST",
+        body: { workspaceCode: "ROAM-LA24-7KQ" },
+      });
+      state.value.syncState = "synced";
+      state.value.syncError = "";
+    } catch (error) {
+      state.value.syncState = "error";
+      state.value.syncError = error instanceof Error ? error.message : "Sync failed";
+    }
   }
 
   return {
@@ -105,8 +148,23 @@ export function useTrip() {
     selectedEvents,
     dayTitle,
     crew: crewMembers,
-    synced: computed(() => state.value.synced),
+    synced: computed(() => state.value.syncState === "synced"),
+    syncState: computed(() => state.value.syncState),
+    conflicts: computed(() => state.value.conflicts),
+    syncError: computed(() => state.value.syncError),
+    markSynced: () => {
+      state.value.syncState = "synced";
+      state.value.syncError = "";
+    },
+    markSyncError: (message: string) => {
+      state.value.syncState = "error";
+      state.value.syncError = message;
+    },
+    syncWorkspace,
     addDay,
+    updateDayDate,
+    deleteEvent,
+    resolveConflict,
     addEvent,
     replaceItinerary,
     addBillItem,

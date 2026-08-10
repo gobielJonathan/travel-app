@@ -13,7 +13,12 @@ const {
   addDay,
   addEvent,
   replaceItinerary,
+  syncWorkspace,
 } = useTrip();
+
+onMounted(() => {
+  void syncWorkspace();
+});
 const route = useRoute();
 const assistantOpen = ref(false);
 const discussionPreview = ref(false);
@@ -386,7 +391,6 @@ function submitEvent(input: {
       @submit="submitEvent"
       @close="showAddEvent = false"
     /><InviteModal v-if="showInvite" :title="title" @close="showInvite = false" />
-    <footer><span>roam · made for the people you travel with</span></footer>
   </div>
 </template>
 

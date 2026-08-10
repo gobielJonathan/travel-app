@@ -1,8 +1,97 @@
 <script setup lang="ts">
-import type { CrewMember } from '~/types/trip'
-defineProps<{ members: CrewMember[] }>()
-const emit = defineEmits<{ invite: [] }>()
+import type { CrewMember } from "~/types/trip";
+defineProps<{ members: CrewMember[] }>();
+const emit = defineEmits<{ invite: [] }>();
 </script>
 <template>
-  <div class="rounded border border-[#e5e2db] bg-white p-6"><div class="flex items-start justify-between"><div><div class="font-mono text-[10px] uppercase tracking-[1.3px] text-[#9b958b]">Your crew</div><h2 class="mt-2 text-[22px] tracking-[-.7px]">Travel together</h2></div></div><div class="mt-5 grid gap-4"><div v-for="member in members" :key="member.initials" class="flex items-center gap-3"><div :class="['grid h-[38px] w-[38px] shrink-0 place-items-center rounded-full text-[10px] font-bold', member.tone === 'coral' ? 'bg-[#e9b4a4]' : member.tone === 'blue' ? 'bg-[#adc7c5]' : member.tone === 'gold' ? 'bg-[#e0c881]' : 'bg-[#d9d0bf] text-[#4b4035]']">{{ member.initials }}</div><div><strong class="block text-xs">{{ member.name }}</strong><p class="mt-1 text-[10px] text-[#9b958b]">{{ member.role }}</p></div></div></div><button class="mt-6 rounded bg-[#f2eee5] px-4 py-3 text-xs font-semibold text-coral" @click="emit('invite')">Share invite</button></div>
+  <div class="crew-panel">
+    <div class="panel-heading">
+      <div>
+        <div class="section-label">Your crew</div>
+        <h2>Travel together</h2>
+      </div>
+    </div>
+    <div class="crew-members">
+      <div v-for="member in members" :key="member.initials" class="crew-member">
+        <div :class="['crew-avatar', member.tone]">{{ member.initials }}</div>
+        <div>
+          <strong>{{ member.name }}</strong>
+          <p>{{ member.role }}</p>
+        </div>
+      </div>
+    </div>
+    <button class="crew-invite" @click="emit('invite')">Share invite</button>
+  </div>
 </template>
+<style>
+.crew-panel {
+  padding: 18px;
+  border: 1px solid var(--line);
+  background: var(--white);
+}
+.crew-panel h2 {
+  margin: 8px 0;
+  color: var(--night);
+  font:
+    400 28px Instrument Serif,
+    serif;
+}
+.crew-members {
+  display: grid;
+  gap: 16px;
+  margin-top: 20px;
+}
+.crew-member {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.crew-avatar {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--night);
+  font:
+    500 10px IBM Plex Mono,
+    monospace;
+}
+.crew-avatar.coral {
+  background: #e9b4a4;
+}
+.crew-avatar.blue {
+  background: #adc7c5;
+}
+.crew-avatar.gold {
+  background: #e0c881;
+}
+.crew-avatar.mint {
+  background: #b5cbb6;
+}
+.crew-member strong {
+  display: block;
+  font-size: 12px;
+}
+.crew-member p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+.crew-invite {
+  min-height: 44px;
+  margin-top: 22px;
+  border: 0;
+  background: #527d8718;
+  padding: 10px 14px;
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 800;
+}
+@media (min-width: 801px) {
+  .crew-panel {
+    padding: 22px;
+  }
+}
+</style>

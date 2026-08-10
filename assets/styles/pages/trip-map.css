@@ -1,0 +1,37 @@
+.map-page {
+  min-height: 100svh;
+}
+.map-page main {
+  display: flex;
+  flex-direction: column;
+}
+.map-page h1 {
+  margin: 12px 0;
+  color: var(--night);
+  font:
+    400 clamp(44px, 12vw, 76px) Instrument Serif,
+    serif;
+  letter-spacing: -0.04em;
+}
+.map-page h1 em {
+  color: var(--orange);
+  font-style: normal;
+}
+.map-page .hero-row {
+  padding-bottom: 18px;
+}
+.map-canvas {
+  height: calc(100svh - 210px);
+  min-height: 360px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+}
+@media (min-width: 801px) {
+  .map-page .hero-row {
+    flex-direction: row;
+  }
+  .map-canvas {
+    height: min(620px, calc(100vh - 210px));
+  }
+}
