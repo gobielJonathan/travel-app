@@ -48,7 +48,12 @@ export function useTripSync(workspaceCode: Ref<string>) {
     });
     peers.set(remotePeerId, connection);
     connection.onicecandidate = (event) => {
-      if (event.candidate) sendSignal({ type: "candidate", peerId: remotePeerId, candidate: event.candidate.toJSON() });
+      if (event.candidate)
+        sendSignal({
+          type: "candidate",
+          peerId: remotePeerId,
+          candidate: event.candidate.toJSON(),
+        });
     };
     connection.onconnectionstatechange = () => {
       if (["failed", "closed", "disconnected"].includes(connection.connectionState)) {

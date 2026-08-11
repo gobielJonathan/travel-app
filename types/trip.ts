@@ -17,4 +17,10 @@ export type TripEvent = {
   todos: TripTodo[];
 };
 export type TripDay = { label: string; date: string; month: string; count: number };
+export type TripBudgetCategory = { name: string; spent: number };
+export type TripBudget = {
+  total: number;
+  spent: number;
+  categories: TripBudgetCategory[];
+};
 export type CrewMember = { initials: string; name: string; role: string; tone?: string };

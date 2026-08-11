@@ -7,6 +7,7 @@ export default defineNuxtConfig({
   vite: { plugins: [tailwindcss()] },
   devtools: { enabled: true },
   runtimeConfig: {
-    deepseekApiKey: "",
+    deepseekApiKey: process.env.DEEPSEEK_API_KEY || "",
+    deepseekModel: process.env.DEEPSEEK_MODEL || "deepseek-chat",
   },
 });

@@ -7,7 +7,13 @@ defineProps<{
   dayTitle: string;
   synced: boolean;
 }>();
-const emit = defineEmits<{ day: [number]; select: [TripEvent]; add: []; addDay: [] }>();
+const emit = defineEmits<{
+  day: [number];
+  select: [TripEvent];
+  delete: [string];
+  add: [];
+  addDay: [];
+}>();
 </script>
 <template>
   <section class="workspace">
@@ -58,6 +64,14 @@ const emit = defineEmits<{ day: [number]; select: [TripEvent]; add: []; addDay: 
               >
             </div>
             <span class="more-btn">•••</span>
+          </button>
+          <button
+            class="delete-event-btn"
+            type="button"
+            aria-label="Delete event"
+            @click.stop="emit('delete', event.id)"
+          >
+            ×
           </button>
         </article>
       </div>

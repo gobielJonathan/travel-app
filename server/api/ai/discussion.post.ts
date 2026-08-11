@@ -43,7 +43,7 @@ export default defineEventHandler(async (event) => {
           "Content-Type": "application/json",
         },
         body: {
-          model: "deepseek-v4-flash",
+          model: config.deepseekModel || "deepseek-chat",
           messages: [
             {
               role: "system",
@@ -55,7 +55,6 @@ export default defineEventHandler(async (event) => {
             { role: "user" as const, content: message },
           ],
           temperature: 0.5,
-          max_tokens: 220,
         },
       },
     );

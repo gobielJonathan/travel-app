@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TripEvent } from "~/types/trip";
+import VueMarkdown from "vue-markdown-render";
 import type { GeneratedItinerary } from "~/types/itinerary";
 import { loadItinerary, saveItinerary } from "~/utils/itineraryStorage";
 const {
@@ -7,11 +8,13 @@ const {
   activeDay,
   days,
   selectedEvents,
+  budget,
   dayTitle,
   crew,
   synced,
   addDay,
   addEvent,
+  deleteEvent,
   replaceItinerary,
   syncWorkspace,
 } = useTrip();
@@ -27,6 +30,17 @@ const assistantOpen = ref(false);
 const discussionPreview = ref(false);
 const discussionMessages = ref<{ role: "user" | "assistant"; content: string }[]>([]);
 const generatedPreview = ref<GeneratedItinerary | null>(null);
+const previewDays = computed(() => {
+  if (!generatedPreview.value) return [];
+  return generatedPreview.value.events.reduce<
+    Array<{ day: number; events: GeneratedItinerary["events"] }>
+  >((groups, event) => {
+    const group = groups.find((item) => item.day === event.day);
+    if (group) group.events.push(event);
+    else groups.push({ day: event.day, events: [event] });
+    return groups;
+  }, []);
+});
 const itineraryLoading = ref(false);
 const itineraryError = ref("");
 if (import.meta.client && route.query.preview === "1") {
@@ -61,11 +75,15 @@ function closeDiscussionPreview() {
 function useDiscussionPlan() {
   if (!generatedPreview.value) return;
   replaceItinerary(generatedPreview.value);
+  if (import.meta.client) sessionStorage.setItem("roam-discussion:used", "1");
   closeDiscussionPreview();
 }
 if (import.meta.client && route.query.preview === "1") {
   loadItinerary().then((saved) => {
-    if (saved) generatedPreview.value = saved;
+    if (saved && sessionStorage.getItem("roam-discussion:used") !== "1") {
+      generatedPreview.value = saved;
+      discussionPreview.value = true;
+    }
   });
 }
 const assistantNote = ref("");
@@ -159,6 +177,10 @@ async function handleReceipt(event: Event) {
 function selectEvent(event: TripEvent) {
   selectedEvent.value = event;
 }
+function removeEvent(id: string) {
+  deleteEvent(id);
+  if (selectedEvent.value?.id === id) selectedEvent.value = null;
+}
 function submitEvent(input: {
   title: string;
   place: string;
@@ -235,21 +257,52 @@ function submitEvent(input: {
         :synced="synced"
         @day="activeDay = $event"
         @select="selectEvent"
+        @delete="removeEvent"
         @add="showAddEvent = true"
         @add-day="addDay"
       />
       <section class="lower-grid">
-        <div class="panel quick-panel">
+        <div class="panel budget-panel">
           <div class="panel-heading">
             <div>
-              <div class="section-label">Trip pulse</div>
-              <h2>Keep it moving</h2>
+              <div class="section-label">Trip budget</div>
+              <h2>Spend with intent</h2>
+            </div>
+            <strong
+              class="budget-progress-label"
+              :class="{ 'budget-progress-label--over': budget.progress >= 100 }"
+              >{{ Math.round(budget.progress) }}%</strong
+            >
+          </div>
+          <div class="budget-summary">
+            <div>
+              <strong>{{ `$${budget.total.toLocaleString()}` }}</strong
+              ><span>total budget</span>
+            </div>
+            <div>
+              <strong>{{ `$${budget.spent.toLocaleString()}` }}</strong
+              ><span>spent</span>
+            </div>
+            <div>
+              <strong>{{ `$${budget.remaining.toLocaleString()}` }}</strong
+              ><span>remaining</span>
             </div>
           </div>
-          <div class="pulse-row">
-            <div><strong>3.2 km</strong><span>walking today</span></div>
-            <div><strong>$86</strong><span>shared costs</span></div>
-            <div><strong>72°</strong><span>at 2:00 pm</span></div>
+          <div
+            class="budget-progress"
+            role="progressbar"
+            aria-label="Trip budget spent"
+            :aria-valuenow="budget.progress"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          >
+            <span :style="{ width: `${budget.progress}%` }"></span>
+          </div>
+          <div class="budget-categories">
+            <div v-for="category in budget.categories" :key="category.name">
+              <span>{{ category.name }}</span>
+              <strong>{{ `$${category.spent.toLocaleString()}` }}</strong>
+            </div>
           </div>
         </div>
         <CrewList :members="crew" @invite="showInvite = true" />
@@ -326,21 +379,35 @@ function submitEvent(input: {
     </div>
     <div v-if="discussionPreview" class="modal-overlay">
       <aside class="assistant-panel discussion-preview">
-        <div class="section-label">Discussion preview</div>
+        <div class="preview-kicker"><span class="preview-spark">✦</span> Roam made a route</div>
         <h2>{{ generatedPreview?.title || "Your trip starts here" }}</h2>
-        <p v-if="generatedPreview">
-          {{ generatedPreview.destination }} · {{ generatedPreview.dates }}
+        <p v-if="generatedPreview" class="preview-subtitle">
+          {{ generatedPreview.destination }} <span>·</span> {{ generatedPreview.dates }}
         </p>
-        <div v-if="generatedPreview" class="assistant-stream">
-          <div
-            v-for="event in generatedPreview.events"
-            :key="`${event.day}-${event.time}-${event.title}`"
-            class="preview-event"
-          >
-            <strong>{{ event.time }} · {{ event.title }}</strong
-            ><small>{{ event.place }}</small>
-            <span>{{ event.recommendations.join(" · ") }}</span>
-          </div>
+        <div v-if="generatedPreview" class="preview-itinerary">
+          <section v-for="day in previewDays" :key="day.day" class="preview-day">
+            <div class="preview-day-marker">
+              <span>Day</span><strong>{{ day.day }}</strong>
+            </div>
+            <div class="preview-day-stops">
+              <article
+                v-for="event in day.events"
+                :key="`${event.day}-${event.time}-${event.title}`"
+                class="preview-stop"
+              >
+                <div class="preview-stop-time">{{ event.time }}</div>
+                <div class="preview-stop-pin"></div>
+                <div class="preview-stop-copy">
+                  <strong>{{ event.title }}</strong>
+                  <small>{{ event.place }}</small>
+                  <span v-if="event.recommendations.length">{{ event.recommendations[0] }}</span>
+                  <span v-if="event.food.length" class="preview-note"
+                    >Eat nearby · {{ event.food[0] }}</span
+                  >
+                </div>
+              </article>
+            </div>
+          </section>
         </div>
         <div v-else class="assistant-stream">
           <div
@@ -348,21 +415,28 @@ function submitEvent(input: {
             :key="index"
             :class="['landing-message', { user: message.role === 'user' }]"
           >
-            {{ message.content }}
+            <VueMarkdown
+              :source="message.content"
+              :options="{ html: false, breaks: true, linkify: true }"
+            />
           </div>
         </div>
         <small v-if="itineraryError" class="assistant-error">{{ itineraryError }}</small>
         <div class="preview-actions">
+          <button class="preview-secondary ghost-btn" @click="closeDiscussionPreview">
+            Start blank
+          </button>
           <button
             v-if="!generatedPreview"
-            class="primary-btn"
+            class="preview-primary primary-btn"
             :disabled="itineraryLoading"
             @click="generateItinerary"
           >
-            {{ itineraryLoading ? "Building itinerary…" : "Create itinerary" }}
+            {{ itineraryLoading ? "Building itinerary…" : "Build this route" }}
           </button>
-          <button v-else class="primary-btn" @click="useDiscussionPlan">Use this itinerary</button>
-          <button class="ghost-btn" @click="closeDiscussionPreview">Start blank</button>
+          <button v-else class="preview-primary primary-btn" @click="useDiscussionPlan">
+            Use this route <span>↗</span>
+          </button>
         </div>
       </aside>
     </div>
@@ -377,7 +451,10 @@ function submitEvent(input: {
             :key="index"
             :class="['landing-message', { user: message.role === 'user' }]"
           >
-            {{ message.content }}
+            <VueMarkdown
+              :source="message.content"
+              :options="{ html: false, breaks: true, linkify: true }"
+            />
           </div>
           <div v-if="!assistantMessages.length" class="landing-message">
             I know this trip. Ask about timing, food, routes, or tradeoffs.

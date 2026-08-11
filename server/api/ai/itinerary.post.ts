@@ -19,6 +19,7 @@ export default defineEventHandler(async (event) => {
       )
     : [];
   const discussion = messages
+    .slice(-12)
     .map((message) => `${message.role}: ${message.content.slice(0, 800)}`)
     .join("\n");
   if (!discussion) throw createError({ statusCode: 400, statusMessage: "Discussion is required" });
@@ -37,28 +38,49 @@ export default defineEventHandler(async (event) => {
           "Content-Type": "application/json",
         },
         body: {
-          model: "deepseek-v4-flash",
+          model: config.deepseekModel || "deepseek-chat",
           response_format: { type: "json_object" },
           messages: [
             {
               role: "system",
-              content: `Create itinerary JSON only. Require destination and dates. If missing, return {"needs":"destination or dates"}. Schema: ${itinerarySchema}. Generate practical events with recommendations, nearby food, and preparation/group todos.`,
+              content: `Analyze the entire discussion before deciding anything is missing. Infer destination and dates from natural language, relative dates, ranges, durations, and assistant confirmations. Resolve references such as "there", "next weekend", and "four days" using prior messages. Create itinerary JSON only. Return {"needs":"destination"} or {"needs":"dates"} only when analysis cannot infer that field. Schema: ${itinerarySchema}. Generate practical events with recommendations, nearby food, and preparation/group todos.`,
             },
             { role: "user", content: discussion },
           ],
           temperature: 0.4,
-          max_tokens: 1200,
         },
       },
     );
     const content = response.choices?.[0]?.message?.content?.trim();
-    if (!content) throw new Error("Empty itinerary response");
-    const parsed = JSON.parse(content) as GeneratedItinerary & { needs?: string };
+    if (!content) throw new Error("DeepSeek returned empty itinerary content");
+    const source = content ?? "";
+    const fencedContent = source
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```$/i, "")
+      .trim();
+    const start = fencedContent.indexOf("{");
+    const end = fencedContent.lastIndexOf("}");
+    if (start < 0 || end <= start) throw new Error("DeepSeek returned non-JSON itinerary content");
+    const parsed = JSON.parse(fencedContent.slice(start, end + 1)) as GeneratedItinerary & {
+      needs?: string;
+    };
     if (parsed.needs) return { needs: parsed.needs };
     if (!isGeneratedItinerary(parsed)) throw new Error("Invalid itinerary response");
     return parsed;
   } catch (error) {
-    console.error("Itinerary generation failed", error);
-    throw createError({ statusCode: 502, statusMessage: "Itinerary generation unavailable" });
+    const providerError = error as { status?: number; data?: { error?: { message?: string } } };
+    console.error("Itinerary generation failed", {
+      status: providerError.status,
+      message:
+        providerError.data?.error?.message ??
+        (error instanceof Error ? error.message : "Unknown error"),
+    });
+    throw createError({
+      statusCode: providerError.status === 401 ? 503 : 502,
+      statusMessage:
+        providerError.status === 401
+          ? "AI provider rejected the API key"
+          : "Itinerary generation unavailable",
+    });
   }
 });

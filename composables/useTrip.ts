@@ -1,5 +1,5 @@
 import { computed } from "vue";
-import { crewMembers, tripDays, tripEvents } from "~/data/trip";
+import { crewMembers, tripBudget, tripDays, tripEvents } from "~/data/trip";
 import type { BillItem, TripEvent } from "~/types/trip";
 import { useInvite } from "~/composables/useInvite";
 
@@ -29,6 +29,14 @@ export function useTrip() {
     },
   });
   const events = computed(() => state.value.events);
+  const budget = computed(() => ({
+    ...tripBudget,
+    remaining: Math.max(0, tripBudget.total - tripBudget.spent),
+    progress:
+      tripBudget.total > 0
+        ? Math.min(100, Math.max(0, (tripBudget.spent / tripBudget.total) * 100))
+        : 0,
+  }));
   const days = computed(() =>
     state.value.days.map((day, index) => ({
       ...day,
@@ -58,7 +66,10 @@ export function useTrip() {
     state.value.syncState = "pending";
   }
 
-  function updateDayDate(index: number, date: Pick<(typeof tripDays)[number], "label" | "date" | "month">) {
+  function updateDayDate(
+    index: number,
+    date: Pick<(typeof tripDays)[number], "label" | "date" | "month">,
+  ) {
     const day = state.value.days[index];
     if (!day) return false;
     Object.assign(day, date);
@@ -147,6 +158,7 @@ export function useTrip() {
     activeDay,
     days,
     events,
+    budget,
     selectedEvents,
     dayTitle,
     crew: crewMembers,

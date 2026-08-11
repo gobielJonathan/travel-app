@@ -1,7 +1,17 @@
 <script setup lang="ts">
+import VueMarkdown from "vue-markdown-render";
+import type { GeneratedItinerary } from "~/types/itinerary";
+import { saveItinerary } from "~/utils/itineraryStorage";
+
 const note = ref("");
 const { messages, loading, error, ask } = useAiDiscussion();
-const hasDiscussion = computed(() => messages.value.some((message) => message.role === "user"));
+const hasDiscussion = computed(
+  () =>
+    messages.value.some((message) => message.role === "user") &&
+    messages.value.some((message) => message.role === "assistant"),
+);
+const finalizing = ref(false);
+const finalizeError = ref("");
 const intro = "Tell me where you want to go, who is coming, and what kind of days you want.";
 function send() {
   const prompt = note.value.trim();
@@ -14,7 +24,25 @@ async function startPlanning() {
     await navigateTo("/trip");
     return;
   }
-  await navigateTo("/trip?preview=1");
+  finalizing.value = true;
+  finalizeError.value = "";
+  try {
+    const itinerary = await $fetch<GeneratedItinerary | { needs: string }>("/api/ai/itinerary", {
+      method: "POST",
+      body: { messages: messages.value },
+    });
+    if ("needs" in itinerary) {
+      finalizeError.value = `Before finalizing, tell Roam AI your ${itinerary.needs}.`;
+      return;
+    }
+    await saveItinerary(itinerary);
+    await navigateTo("/trip?preview=1");
+  } catch (requestError) {
+    finalizeError.value =
+      requestError instanceof Error ? requestError.message : "Itinerary generation unavailable";
+  } finally {
+    finalizing.value = false;
+  }
 }
 </script>
 <template>
@@ -52,7 +80,10 @@ async function startPlanning() {
             :key="index"
             :class="['landing-message', { user: message.role === 'user' }]"
           >
-            {{ message.content }}
+            <VueMarkdown
+              :source="message.content"
+              :options="{ html: false, breaks: true, linkify: true }"
+            />
           </div>
           <div v-if="!messages.length" class="landing-message">{{ intro }}</div>
           <div v-if="loading" class="landing-message">Thinking…</div>
@@ -71,9 +102,18 @@ async function startPlanning() {
           ><button @click="note = 'A relaxed city trip'">Slow city days</button
           ><button @click="note = 'An outdoors trip nearby'">Outside time</button>
         </div>
-        <button class="start-button" @click="startPlanning">
+        <button v-if="!hasDiscussion" class="start-button" @click="startPlanning">
           Start with a blank plan <span>→</span>
         </button>
+        <button
+          v-else
+          class="start-button finalize-button"
+          :disabled="loading || finalizing || !!error"
+          @click="startPlanning"
+        >
+          {{ finalizing ? "Building trip preview…" : "Finalize trip plan" }} <span>→</span>
+        </button>
+        <small v-if="finalizeError" class="assistant-error">{{ finalizeError }}</small>
       </section>
     </section>
     <section class="landing-foot">

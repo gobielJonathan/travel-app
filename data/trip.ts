@@ -1,4 +1,15 @@
-import type { CrewMember, TripDay, TripEvent } from "~/types/trip";
+import type { CrewMember, TripBudget, TripDay, TripEvent } from "~/types/trip";
+
+export const tripBudget: TripBudget = {
+  total: 2400,
+  spent: 1320,
+  categories: [
+    { name: "Stay", spent: 720 },
+    { name: "Food", spent: 360 },
+    { name: "Transport", spent: 160 },
+    { name: "Activities", spent: 80 },
+  ],
+};
 
 export const tripDays: TripDay[] = [
   { label: "Wed", date: "18", month: "Sep", count: 3 },

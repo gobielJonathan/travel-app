@@ -5,7 +5,8 @@ function createWorkspaceCode() {
   if (import.meta.client && window.crypto?.getRandomValues) {
     window.crypto.getRandomValues(values);
   } else {
-    for (let index = 0; index < values.length; index += 1) values[index] = Math.floor(Math.random() * 2 ** 32);
+    for (let index = 0; index < values.length; index += 1)
+      values[index] = Math.floor(Math.random() * 2 ** 32);
   }
   return `ROAM-${Array.from(values, (value) => alphabet[value % alphabet.length]).join("")}`;
 }

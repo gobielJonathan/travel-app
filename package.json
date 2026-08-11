@@ -16,7 +16,8 @@
     "leaflet": "^1.9.4",
     "nuxt": "latest",
     "tesseract.js": "^7.0.0",
-    "vue": "^3.5.40"
+    "vue": "^3.5.40",
+    "vue-markdown-render": "^2.3.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
