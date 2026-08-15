@@ -210,3 +210,7 @@ select:focus-visible {
     animation-duration: 0.01ms !important;
   }
 }
+
+.bsw-bottom-sheet-panel {
+  padding: 0 !important;
+}

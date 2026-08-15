@@ -64,52 +64,7 @@ export function useTripPage() {
     { label: "Fri", date: "20", month: "Sep", count: 3 },
     { label: "Sat", date: "21", month: "Sep", count: 2 },
   ];
-  const events = ref<EventItem[]>([
-    {
-      time: "09:00",
-      title: "Breakfast at Gjusta",
-      place: "Gjusta Bakery · Venice",
-      tag: "Food",
-      tone: "gold",
-      coords: [33.995, -118.457],
-      travelTime: "8 min walk",
-      transport: "Walking",
-      bill: [],
-    },
-    {
-      time: "11:30",
-      title: "Venice Beach boardwalk",
-      place: "Venice Beach · 12 min walk",
-      tag: "Explore",
-      tone: "blue",
-      coords: [33.985, -118.469],
-      travelTime: "12 min walk",
-      transport: "Walking",
-      bill: [],
-    },
-    {
-      time: "14:00",
-      title: "Drive to Griffith Observatory",
-      place: "Transit · 38 min · $2.50",
-      tag: "Transit",
-      tone: "mint",
-      coords: [34.118, -118.3],
-      travelTime: "38 min · $2.50",
-      transport: "Transit",
-      bill: [],
-    },
-    {
-      time: "18:30",
-      title: "Sunset and dinner",
-      place: "The Misfit · Santa Monica",
-      tag: "Food",
-      tone: "coral",
-      coords: [34.01, -118.496],
-      travelTime: "22 min transit",
-      transport: "Transit",
-      bill: [],
-    },
-  ]);
+  const events = ref<EventItem[]>([]);
   const dayTitle = computed(() => {
     const day = days[activeDay.value] ?? days[0]!;
     return `${day.label}, ${day.month} ${day.date}`;

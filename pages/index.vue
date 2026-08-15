@@ -1,17 +1,49 @@
 <script setup lang="ts">
+import { BsSimple } from "@coderoycc/bottom-sheet-wrappers";
 import VueMarkdown from "vue-markdown-render";
 import type { GeneratedItinerary } from "~/types/itinerary";
-import { saveItinerary } from "~/utils/itineraryStorage";
+import { clearItinerary, loadItinerary, saveItinerary } from "~/utils/itineraryStorage";
+
+useHead({ title: "Plan Your Trip — Roam" });
 
 const note = ref("");
 const { messages, loading, error, ask } = useAiDiscussion();
-const hasDiscussion = computed(
-  () =>
-    messages.value.some((message) => message.role === "user") &&
-    messages.value.some((message) => message.role === "assistant"),
-);
+const roles = new Set(["user", "assistant"]);
+
+const hasDiscussion = computed(() => messages.value.some((message) => roles.has(message.role)));
+
 const finalizing = ref(false);
 const finalizeError = ref("");
+const showExistingPlanDialog = ref(false);
+const existingPlanPending = ref(false);
+
+function hasExistingTrip() {
+  return !!localStorage.getItem("roam-trip-state");
+}
+
+async function startBlankPlan() {
+  existingPlanPending.value = false;
+  showExistingPlanDialog.value = false;
+  await clearItinerary();
+  localStorage.removeItem("roam-trip-state");
+  localStorage.removeItem("roam-trip-title");
+  localStorage.removeItem("roam-deleted-event-ids");
+  await navigateTo("/trip");
+}
+
+async function keepExistingPlan() {
+  existingPlanPending.value = false;
+  showExistingPlanDialog.value = false;
+  await navigateTo("/trip");
+}
+
+async function startBlankPlanWithCheck() {
+  if (hasExistingTrip() || (await loadItinerary())) {
+    showExistingPlanDialog.value = true;
+    return;
+  }
+  await startBlankPlan();
+}
 const intro = "Tell me where you want to go, who is coming, and what kind of days you want.";
 function send() {
   const prompt = note.value.trim();
@@ -21,7 +53,7 @@ function send() {
 }
 async function startPlanning() {
   if (!hasDiscussion.value) {
-    await navigateTo("/trip");
+    await startBlankPlanWithCheck();
     return;
   }
   finalizing.value = true;
@@ -116,6 +148,32 @@ async function startPlanning() {
         <small v-if="finalizeError" class="assistant-error">{{ finalizeError }}</small>
       </section>
     </section>
+    <ClientOnly>
+      <BsSimple
+        v-model="showExistingPlanDialog"
+        :close-on-backdrop="true"
+        :hide-close-button="true"
+        :show-backdrop="true"
+        :z-index="40"
+        class="existing-plan-sheet"
+      >
+        <div class="existing-plan-dialog">
+          <div class="existing-plan-mark" aria-hidden="true">↻</div>
+          <p class="existing-plan-kicker">Trip memory</p>
+          <h2 id="existing-plan-title">You already have a trip in motion.</h2>
+          <p class="existing-plan-copy">
+            Keep your saved days, or clear them and make a clean start. Nothing changes until you
+            choose.
+          </p>
+          <div class="existing-plan-actions">
+            <button :disabled="existingPlanPending" @click="keepExistingPlan">Keep my trip</button>
+            <button :disabled="existingPlanPending" @click="startBlankPlan">
+              Clear and start fresh
+            </button>
+          </div>
+        </div>
+      </BsSimple>
+    </ClientOnly>
     <section class="landing-foot">
       <span>Four friends. One living itinerary.</span
       ><span>End-to-end encrypted · works offline · no account required</span>
@@ -123,4 +181,5 @@ async function startPlanning() {
   </main>
 </template>
 
-<style src="~/assets/styles/pages/index.css"></style>
+<style scoped src="~/assets/styles/pages/index.css"></style>
+<style scoped src="~/assets/styles/components/modals.css"></style>

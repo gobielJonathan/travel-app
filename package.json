@@ -12,9 +12,12 @@
     "format:check": "oxfmt --check ."
   },
   "dependencies": {
-    "@amho/vottom-sheet": "^0.14.1",
+    "@coderoycc/bottom-sheet-wrappers": "^2.0.0",
+    "@vueuse/integrations": "^14.4.0",
+    "jsqr": "^1.4.0",
     "leaflet": "^1.9.4",
     "nuxt": "latest",
+    "qrcode": "^1.5.4",
     "tesseract.js": "^7.0.0",
     "vue": "^3.5.40",
     "vue-markdown-render": "^2.3.1"

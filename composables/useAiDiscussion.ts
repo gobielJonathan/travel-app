@@ -12,14 +12,12 @@ const MAX_MESSAGE_LENGTH = 800;
 
 export function useAiDiscussion(options: DiscussionOptions = {}) {
   const storageKey = `roam-discussion:${options.cacheKey ?? "default"}`;
-  const messages = ref<Message[]>(
-    import.meta.client ? JSON.parse(sessionStorage.getItem(storageKey) ?? "[]") : [],
-  );
+  const messages = ref<Message[]>(JSON.parse(sessionStorage.getItem(storageKey) ?? "[]"));
 
   watch(
     messages,
     (value) => {
-      if (import.meta.client) sessionStorage.setItem(storageKey, JSON.stringify(value));
+      sessionStorage.setItem(storageKey, JSON.stringify(value));
     },
     { deep: true },
   );
@@ -33,7 +31,7 @@ export function useAiDiscussion(options: DiscussionOptions = {}) {
     const context = options.context?.()?.slice(0, 3000) ?? "";
     const history = messages.value.slice(-MAX_HISTORY_MESSAGES);
     const cacheKey = `roam-ai:${options.cacheKey ?? context}:${prompt}`;
-    const cached = import.meta.client ? sessionStorage.getItem(cacheKey) : null;
+    const cached = sessionStorage.getItem(cacheKey);
     messages.value.push({ role: "user", content: prompt });
     if (cached) {
       messages.value.push({ role: "assistant", content: cached });
@@ -46,7 +44,7 @@ export function useAiDiscussion(options: DiscussionOptions = {}) {
         body: { message: prompt, context, history },
       });
       messages.value.push({ role: "assistant", content: response.reply });
-      if (import.meta.client) sessionStorage.setItem(cacheKey, response.reply);
+      sessionStorage.setItem(cacheKey, response.reply);
     } catch (requestError) {
       messages.value.pop();
       error.value =

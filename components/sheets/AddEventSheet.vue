@@ -1,12 +1,30 @@
 <script setup lang="ts">
+import { BsSimple } from "@coderoycc/bottom-sheet-wrappers";
+
 type PlaceSuggestion = { display_name: string; lat: string; lon: string };
 const emit = defineEmits<{
-  submit: [{ title: string; place: string; time: string; tag: string; coords: [number, number] }];
+  submit: [
+    {
+      title: string;
+      place: string;
+      day: number;
+      time: string;
+      notes: string;
+      tag: string;
+      coords: [number, number];
+    },
+  ];
   close: [];
+}>();
+const props = defineProps<{
+  days: { label: string; date: string; month: string }[];
+  initialDay: number;
 }>();
 const title = ref("");
 const place = ref("");
+const day = ref(props.initialDay);
 const time = ref("20:00");
+const notes = ref("");
 const tag = ref("New");
 const suggestions = ref<PlaceSuggestion[]>([]);
 const searching = ref(false);
@@ -44,6 +62,9 @@ function selectPlace(suggestion: PlaceSuggestion) {
   selectedCoords.value = [Number(suggestion.lat), Number(suggestion.lon)];
   suggestions.value = [];
 }
+function closeSheet(open: boolean) {
+  if (!open) emit("close");
+}
 function submit() {
   if (
     !title.value.trim() ||
@@ -55,7 +76,9 @@ function submit() {
   emit("submit", {
     title: title.value.trim(),
     place: place.value.trim(),
+    day: day.value,
     time: time.value,
+    notes: notes.value.trim(),
     tag: tag.value,
     coords: selectedCoords.value,
   });
@@ -65,11 +88,27 @@ function submit() {
 }
 </script>
 <template>
-  <div class="modal-overlay" @click.self="emit('close')">
-    <section class="modal-surface invite-modal">
-      <button class="close-btn" @click="emit('close')">×</button>
+  <BsSimple
+    :model-value="true"
+    :close-on-backdrop="true"
+    :hide-close-button="true"
+    height="80dvh"
+    :show-backdrop="true"
+    :z-index="40"
+    class="add-event-sheet"
+    @update:model-value="closeSheet"
+  >
+    <div class="add-event-dialog">
+      <button
+        class="close-btn"
+        type="button"
+        aria-label="Close add event dialog"
+        @click="emit('close')"
+      >
+        ×
+      </button>
       <div class="section-label">New stop</div>
-      <h2>Add event</h2>
+      <h2 id="add-event-title">Add event</h2>
       <p>Set place and schedule time for this stop.</p>
       <form class="event-form" @submit.prevent="submit">
         <label>Event title<input v-model="title" placeholder="Dinner at Bestia" required /></label>
@@ -96,8 +135,18 @@ function submit() {
             </button>
           </div></label
         >
-        <div class="event-form-row">
-          <label>Schedule time<input v-model="time" type="time" required /></label
+        <div class="event-form-row schedule-form-row">
+          <label
+            >Date<select v-model.number="day">
+              <option
+                v-for="(item, index) in props.days"
+                :key="`${item.month}-${item.date}`"
+                :value="index"
+              >
+                {{ item.label }} · {{ item.month }} {{ item.date }}
+              </option>
+            </select></label
+          ><label>Time<input v-model="time" type="time" required /></label
           ><label
             >Type<select v-model="tag">
               <option>New</option>
@@ -107,10 +156,21 @@ function submit() {
             </select></label
           >
         </div>
+        <label class="notes-field">
+          <span class="notes-label"><span>Notes</span><small>Optional</small></span>
+          <textarea
+            v-model="notes"
+            maxlength="280"
+            placeholder="A detail worth remembering…"
+          ></textarea>
+          <span class="notes-footer"
+            ><span>Keep it useful for your future self.</span>{{ notes.length }}/280</span
+          >
+        </label>
         <button class="primary-btn" type="submit">Add to timeline</button>
       </form>
-    </section>
-  </div>
+    </div>
+  </BsSimple>
 </template>
 
-<style src="~/assets/styles/components/modals.css"></style>
+<style scoped src="~/assets/styles/components/modals.css"></style>

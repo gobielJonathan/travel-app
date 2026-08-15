@@ -9,6 +9,7 @@ export type GeneratedItinerary = {
       recommendations: string[];
       food: string[];
       todos: TripTodo[];
+      conflict?: boolean;
     }
   >;
 };

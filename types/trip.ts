@@ -6,6 +6,7 @@ export type TripEvent = {
   time: string;
   title: string;
   place: string;
+  notes?: string;
   tag: string;
   tone: string;
   coords: [number, number];

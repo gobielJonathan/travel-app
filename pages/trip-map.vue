@@ -1,5 +1,15 @@
 <script setup lang="ts">
-const { title, events } = useTrip();
+useHead({ title: "Trip Map — Roam" });
+
+const { title, days, activeDay, events } = useTrip();
+const route = useRoute();
+const selectedDay = computed(() => {
+  const day = Number(route.query.day);
+  return Number.isInteger(day) && day >= 0 && day < days.value.length ? day : activeDay.value;
+});
+const visibleEvents = computed(() =>
+  events.value.filter((event) => event.day === selectedDay.value),
+);
 const mapElement = ref<HTMLElement | null>(null);
 const status = ref("Demo route");
 const summary = ref("");
@@ -7,23 +17,22 @@ let map: import("leaflet").Map | null = null;
 let resizeMap: (() => void) | null = null;
 onMounted(async () => {
   const L = await import("leaflet");
-  const first = events.value[0];
+  const first = visibleEvents.value[0];
   if (!mapElement.value || !first) return;
   map = L.map(mapElement.value).setView(first.coords, 11);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: "© OpenStreetMap contributors",
   }).addTo(map);
-  const points = events.value.map((event) => event.coords);
-  L.polyline(points, { color: "#d5cfc4", weight: 3, dashArray: "5 8" }).addTo(map);
+  const points = visibleEvents.value.map((event) => event.coords);
   const escapeHtml = (value: string) =>
     value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
-  events.value.forEach((event, index) => {
+  visibleEvents.value.forEach((event, index) => {
     const icon = L.divIcon({
-      className: "timeline-map-pin",
-      html: `<span>${index + 1}</span>`,
-      iconSize: [38, 38],
-      iconAnchor: [19, 19],
-      popupAnchor: [0, -22],
+      className: "timeline-map-marker",
+      html: `<span class="timeline-map-marker-pin"></span>`,
+      iconSize: [42, 48],
+      iconAnchor: [21, 44],
+      popupAnchor: [0, -38],
     });
     L.marker(event.coords, { icon })
       .bindPopup(
@@ -32,6 +41,23 @@ onMounted(async () => {
       .addTo(map!);
   });
   map.fitBounds(L.latLngBounds(points), { padding: [24, 24] });
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        if (!map) return;
+        const location = [coords.latitude, coords.longitude] as [number, number];
+        const icon = L.divIcon({
+          className: "current-location-marker",
+          html: '<span class="current-location-marker-dot"></span>',
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
+        });
+        L.marker(location, { icon, zIndexOffset: 1000 }).bindPopup("You are here").addTo(map);
+      },
+      () => undefined,
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+    );
+  }
   resizeMap = () => map?.invalidateSize();
   window.addEventListener("resize", resizeMap);
   try {
@@ -49,10 +75,6 @@ onMounted(async () => {
     };
     const route = data.routes?.[0];
     if (!route) throw new Error();
-    L.polyline(
-      route.geometry.coordinates.map(([lon, lat]) => [lat, lon] as [number, number]),
-      { color: "#d9644e", weight: 5 },
-    ).addTo(map);
     status.value = "Best walking route";
     summary.value = `${(route.distance / 1000).toFixed(1)} km · ${Math.round(route.duration / 60)} min`;
   } catch {
@@ -80,7 +102,8 @@ onBeforeUnmount(() => {
           <div class="eyebrow">Route preview</div>
           <h1>{{ title }} <em>stops</em></h1>
           <p class="subtitle">
-            {{ events.length }} stops · {{ status }}<span v-if="summary"> · {{ summary }}</span>
+            {{ visibleEvents.length }} stops · {{ status
+            }}<span v-if="summary"> · {{ summary }}</span>
           </p>
         </div>
         <NuxtLink class="ghost-btn" to="/trip">← Back to trip</NuxtLink>
@@ -90,4 +113,5 @@ onBeforeUnmount(() => {
   </div>
 </template>
 
-<style src="~/assets/styles/pages/trip-map.css"></style>
+<style scoped src="~/assets/styles/pages/trip.css"></style>
+<style scoped src="~/assets/styles/pages/trip-map.css"></style>

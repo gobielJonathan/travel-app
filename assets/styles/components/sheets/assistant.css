@@ -1,0 +1,111 @@
+.assistant-sheet .bsw-bottom-sheet-panel {
+  max-height: min(760px, calc(100dvh - 32px));
+  overflow: hidden;
+  background: #172522;
+}
+.assistant-sheet .assistant-panel {
+  --assistant-ink: #f5ead8;
+  --assistant-muted: #aeb9b1;
+  --assistant-line: #ffffff1f;
+  display: flex;
+  flex-direction: column;
+  min-height: min(620px, calc(80dvh - 20px));
+  max-height: min(760px, calc(100dvh - 32px));
+  padding: 22px 24px calc(20px + env(safe-area-inset-bottom));
+  background: radial-gradient(circle at 86% 0, #527d8738, transparent 34%), #172522;
+  color: var(--assistant-ink);
+  box-shadow: none;
+}
+.assistant-sheet .assistant-panel > .section-label {
+  color: #f0a66f;
+  font:
+    700 10px IBM Plex Mono,
+    monospace;
+  letter-spacing: 0.14em;
+}
+.assistant-sheet .assistant-panel h2 {
+  max-width: 430px;
+  margin: 10px 0 22px;
+  color: var(--assistant-ink);
+  font:
+    400 clamp(36px, 7vw, 58px)/0.92 Instrument Serif,
+    serif;
+  letter-spacing: -0.045em;
+}
+.assistant-sheet .assistant-panel .close-btn {
+  color: var(--assistant-muted);
+}
+.assistant-sheet .assistant-stream {
+  display: grid;
+  flex: 1 1 auto;
+  align-content: start;
+  gap: 12px;
+  min-height: 180px;
+  margin: 0 -4px 20px 0;
+  padding: 4px 12px 12px 0;
+  overflow-y: auto;
+  border-block: 1px solid var(--assistant-line);
+  scrollbar-color: #527d87 transparent;
+}
+.assistant-sheet .assistant-stream .landing-message {
+  width: fit-content;
+  max-width: min(86%, 540px);
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid #ffffff1a;
+  background: #ffffff0d;
+  color: var(--assistant-ink);
+  line-height: 1.55;
+}
+.assistant-sheet .assistant-stream .landing-message.user {
+  justify-self: end;
+  border-color: #f0a66f66;
+  background: #f0a66f;
+  color: var(--night);
+}
+.assistant-sheet .chat-compose {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: end;
+  padding: 10px;
+  border: 1px solid var(--assistant-line);
+  background: #0f1b19;
+}
+.assistant-sheet .chat-compose:focus-within {
+  border-color: #f0a66f99;
+  box-shadow: 0 0 0 2px #f0a66f22;
+}
+.assistant-sheet .chat-compose textarea {
+  min-height: 48px;
+  max-height: 120px;
+  padding: 8px 4px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--assistant-ink);
+  resize: vertical;
+}
+.assistant-sheet .chat-compose textarea::placeholder {
+  color: var(--assistant-muted);
+}
+.assistant-sheet .chat-compose button {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 0;
+  background: var(--orange);
+  color: var(--night);
+  font-weight: 800;
+}
+.assistant-sheet .chat-compose .implement-plan-btn {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+@media (min-width: 801px) {
+  .assistant-sheet .assistant-panel {
+    height: 100%;
+    max-height: none;
+    padding: 32px;
+    box-shadow: -12px 0 35px #17252233;
+  }
+}

@@ -1,110 +1,146 @@
 <script setup lang="ts">
 import type { TripEvent } from "~/types/trip";
-import VueMarkdown from "vue-markdown-render";
 import type { GeneratedItinerary } from "~/types/itinerary";
-import { loadItinerary, saveItinerary } from "~/utils/itineraryStorage";
+import { useTripAssistant } from "~/composables/useTripAssistant";
+import { useItineraryPreview } from "~/composables/useItineraryPreview";
+import { clearItinerary, loadItinerary } from "~/utils/itineraryStorage";
+import { useTripSync } from "~/composables/useTripSync";
+import readReceipt from "~/utils/receipt-reader";
+import { useTripModals } from "~/composables/useTripModals";
+import { useTripEventEditor } from "~/composables/useTripEventEditor";
+import AssistantSheet from "~/components/sheets/AssistantSheet.vue";
+import AddEventSheet from "~/components/sheets/AddEventSheet.vue";
+import InviteSheet from "~/components/sheets/InviteSheet.vue";
+import DiscussionPreviewSheet from "~/components/sheets/DiscussionPreviewSheet.vue";
+import EventDetailSheet from "~/components/sheets/EventDetailSheet.vue";
+
+definePageMeta({ middleware: "trip-plan" });
+useHead({ title: "My Trip — Roam" });
+
 const {
   title,
   activeDay,
   days,
   selectedEvents,
+  events,
   budget,
   dayTitle,
-  crew,
+  crew: baseCrew,
   synced,
+  completed,
   addDay,
   addEvent,
+  updateEvent: updateTripEvent,
   deleteEvent,
   replaceItinerary,
+  implementEvents,
   syncWorkspace,
 } = useTrip();
-
-onMounted(() => {
-  void syncWorkspace();
-  void tripSync.connect(() => undefined);
-});
 const route = useRoute();
 const { inviteCode } = useInvite();
 const tripSync = useTripSync(inviteCode);
-const assistantOpen = ref(false);
-const discussionPreview = ref(false);
-const discussionMessages = ref<{ role: "user" | "assistant"; content: string }[]>([]);
-const generatedPreview = ref<GeneratedItinerary | null>(null);
-const previewDays = computed(() => {
-  if (!generatedPreview.value) return [];
-  return generatedPreview.value.events.reduce<
-    Array<{ day: number; events: GeneratedItinerary["events"] }>
-  >((groups, event) => {
-    const group = groups.find((item) => item.day === event.day);
-    if (group) group.events.push(event);
-    else groups.push({ day: event.day, events: [event] });
-    return groups;
-  }, []);
-});
-const itineraryLoading = ref(false);
-const itineraryError = ref("");
-if (import.meta.client && route.query.preview === "1") {
-  discussionMessages.value = JSON.parse(sessionStorage.getItem("roam-discussion:default") ?? "[]");
-  discussionPreview.value = discussionMessages.value.some((message) => message.role === "user");
+const crew = computed(() => [
+  ...baseCrew,
+  ...tripSync.members.value.map((id, index) => ({
+    initials: id.slice(0, 2).toUpperCase(),
+    name: `Traveler ${index + 1}`,
+    role: "Joined traveler",
+    tone: ["coral", "blue", "gold", "mint"][index % 4],
+  })),
+]);
+const syncSnapshot = computed(() => ({
+  title: title.value,
+  events: events.value.map(({ id: _id, tone: _tone, bill: _bill, ...event }) => event),
+  days: days.value,
+  budget: budget.value,
+  completed: completed.value,
+}));
+
+function updateEvent(id: string, changes: Pick<TripEvent, "day" | "time" | "notes">) {
+  const updated = updateTripEvent(id, changes);
+  if (updated) tripSync.publish(syncSnapshot.value);
+  return updated;
 }
-async function generateItinerary() {
-  itineraryLoading.value = true;
-  itineraryError.value = "";
-  try {
-    const response = await $fetch<GeneratedItinerary | { needs: string }>("/api/ai/itinerary", {
-      method: "POST",
-      body: { messages: discussionMessages.value },
-    });
-    if ("needs" in response) {
-      itineraryError.value = `Before generating, tell Roam AI your ${response.needs}.`;
-      return;
-    }
-    generatedPreview.value = response;
-    await saveItinerary(response);
-  } catch (error) {
-    itineraryError.value =
-      error instanceof Error ? error.message : "Itinerary generation unavailable";
-  } finally {
-    itineraryLoading.value = false;
-  }
-}
-function closeDiscussionPreview() {
-  discussionPreview.value = false;
-  if (import.meta.client) sessionStorage.removeItem("roam-discussion:default");
-}
-function useDiscussionPlan() {
-  if (!generatedPreview.value) return;
-  replaceItinerary(generatedPreview.value);
-  if (import.meta.client) sessionStorage.setItem("roam-discussion:used", "1");
-  closeDiscussionPreview();
-}
-if (import.meta.client && route.query.preview === "1") {
-  loadItinerary().then((saved) => {
-    if (saved && sessionStorage.getItem("roam-discussion:used") !== "1") {
+
+onMounted(() => {
+  void tripSync.connect(applySyncSnapshot, applySyncSnapshot, () => syncSnapshot.value);
+  void Promise.all([syncWorkspace(), loadItinerary()]).then(([, saved]) => {
+    if (!saved || localStorage.getItem("roam-trip-state")) return;
+    replaceItinerary(saved);
+    if (route.query.preview === "1" && sessionStorage.getItem("roam-discussion:used") !== "1") {
       generatedPreview.value = saved;
       discussionPreview.value = true;
     }
   });
+});
+
+function applySyncSnapshot(payload: unknown) {
+  if (!payload || typeof payload !== "object" || !("title" in payload) || !("events" in payload))
+    return;
+  replaceItinerary(payload as GeneratedItinerary);
 }
-const assistantNote = ref("");
+const { assistantOpen, discussionPreview, showAddEvent, showInvite } = useTripModals();
+const discussionMessages = ref<{ role: "user" | "assistant"; content: string }[]>([]);
+const preview = useItineraryPreview(replaceItinerary, implementEvents, discussionMessages);
 const {
+  generatedPreview,
+  implementationPreview,
+  itineraryLoading,
+  itineraryError,
+  generateItinerary,
+  useDiscussionPlan,
+  applyImplementationPlan,
+} = preview;
+
+if (route.query.preview === "1") {
+  discussionMessages.value = JSON.parse(sessionStorage.getItem("roam-discussion:default") ?? "[]");
+  discussionPreview.value = discussionMessages.value.some((message) => message.role === "user");
+}
+function closeDiscussionPreview() {
+  discussionPreview.value = false;
+  sessionStorage.removeItem("roam-discussion:default");
+}
+const assistant = useTripAssistant(
+  () =>
+    `${title.value}; ${dayTitle.value}; ${selectedEvents.value.map((event) => `${event.time} ${event.title} at ${event.place}`).join("; ")}`,
+  () => ({ title: title.value, days: days.value, events: events.value }),
+  (plan) => {
+    preview.implementationPreview.value = {
+      ...plan,
+      events: plan.events.map((event) => ({
+        ...event,
+        conflict: events.value.some(
+          (existing) => existing.day === event.day && existing.time === event.time,
+        ),
+      })),
+    };
+    assistantOpen.value = false;
+    discussionPreview.value = true;
+  },
+);
+const {
+  assistantNote,
   messages: assistantMessages,
   loading: assistantLoading,
   error: assistantError,
-  ask: askAssistant,
-} = useAiDiscussion({
-  context: () =>
-    `${title.value}; ${dayTitle.value}; ${selectedEvents.value.map((event) => `${event.time} ${event.title} at ${event.place}`).join("; ")}`,
-});
-function sendAssistantMessage() {
-  const prompt = assistantNote.value.trim();
-  if (!prompt) return;
-  void askAssistant(prompt);
-  assistantNote.value = "";
-}
-const selectedEvent = ref<TripEvent | null>(null);
-const editingTitle = ref(false);
-const draftTitle = ref("");
+  implementationLoading: assistantImplementationLoading,
+  sendMessage: sendAssistantMessage,
+  implementPlan: implementAssistantPlan,
+} = assistant;
+const previewDays = computed(() => preview.previewDays());
+const implementationDays = computed(() => preview.implementationDays());
+const {
+  selectedEvent,
+  draftEventDateTime,
+  draftEventNotes,
+  editingTitle,
+  draftTitle,
+  selectEvent,
+  saveEventDetails,
+  removeEvent,
+} = useTripEventEditor(days, updateEvent, deleteEvent);
+const receiptProcessing = ref(false);
+const receiptMessage = ref("");
 function editTitle() {
   draftTitle.value = title.value;
   editingTitle.value = true;
@@ -116,14 +152,18 @@ function saveTitle() {
 function cancelTitle() {
   editingTitle.value = false;
 }
-const showAddEvent = ref(false);
-const showInvite = ref(false);
-const receiptFile = ref<HTMLInputElement | null>(null);
-const receiptProcessing = ref(false);
-const receiptMessage = ref("");
+async function finishTrip() {
+  await clearItinerary();
+  localStorage.removeItem("roam-trip-state");
+  localStorage.removeItem("roam-trip-title");
+  localStorage.removeItem("roam-deleted-event-ids");
+  sessionStorage.removeItem("roam-discussion:default");
+  sessionStorage.removeItem("roam-discussion:used");
+  await navigateTo("/", { replace: true });
+}
+
 function scanReceipt() {
   receiptMessage.value = "";
-  receiptFile.value?.click();
 }
 async function handleReceipt(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0];
@@ -133,33 +173,8 @@ async function handleReceipt(event: Event) {
     return;
   }
   receiptProcessing.value = true;
-  let worker: {
-    terminate: () => Promise<unknown>;
-    recognize: (image: File) => Promise<{ data: { text: string } }>;
-  } | null = null;
   try {
-    const { createWorker } = await import("tesseract.js");
-    worker = await createWorker("eng", 1, {
-      workerPath: "https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/worker.min.js",
-      corePath: "https://cdn.jsdelivr.net/npm/tesseract.js-core@6.0.0/tesseract-core.wasm.js",
-      langPath: "https://tessdata.projectnaptha.com/4.0.0",
-    });
-    const text = (await worker.recognize(file)).data.text;
-    const items = text
-      .split("\n")
-      .map((line) => line.trim().match(/^(.+?)\\s+(\\d+[.,]\\d{2})$/))
-      .flatMap((match) =>
-        match?.[1] && match[2]
-          ? [
-              {
-                name: match[1],
-                price: Number(match[2].replace(",", ".")),
-                member: "JM",
-                settled: false,
-              },
-            ]
-          : [],
-      );
+    const items = await readReceipt(file);
     if (!items.length) {
       receiptMessage.value = "No priced items found. Try a clearer receipt.";
       return;
@@ -169,22 +184,15 @@ async function handleReceipt(event: Event) {
   } catch {
     receiptMessage.value = "Receipt scan failed. Check image format or try another image.";
   } finally {
-    await worker?.terminate();
     receiptProcessing.value = false;
-    if (receiptFile.value) receiptFile.value.value = "";
   }
-}
-function selectEvent(event: TripEvent) {
-  selectedEvent.value = event;
-}
-function removeEvent(id: string) {
-  deleteEvent(id);
-  if (selectedEvent.value?.id === id) selectedEvent.value = null;
 }
 function submitEvent(input: {
   title: string;
   place: string;
+  day: number;
   time: string;
+  notes: string;
   tag: string;
   coords: [number, number];
 }) {
@@ -194,61 +202,26 @@ function submitEvent(input: {
 </script>
 <template>
   <div class="app-shell trip-page">
-    <header class="topbar">
-      <NuxtLink class="brand" to="/"><span class="brand-mark">✦</span> roam</NuxtLink>
-      <nav>
-        <NuxtLink class="nav-active" to="/trip">My plans</NuxtLink
-        ><NuxtLink to="/trip-map">Map</NuxtLink>
-      </nav>
-      <div class="mobile-header-label">{{ title }}</div>
-      <div class="top-actions">
-        <div class="avatar">JM</div>
-        <span class="user-name">Jordan Miller</span>
-      </div>
-    </header>
+    <TripPageHeader
+      :title="title"
+      :crew="crew"
+      :editing-title="editingTitle"
+      :draft-title="draftTitle"
+      :completed="completed"
+      @update:draft-title="draftTitle = $event"
+      @edit-title="editTitle"
+      @save-title="saveTitle"
+      @cancel-title="cancelTitle"
+      @ask-assistant="assistantOpen = true"
+      @complete-trip="finishTrip"
+    />
     <main>
-      <section class="hero-row">
-        <div>
-          <div class="eyebrow"><span class="live-dot"></span> Local-first workspace</div>
-          <div v-if="editingTitle" class="trip-title-editor">
-            <input
-              v-model="draftTitle"
-              autofocus
-              aria-label="Trip title"
-              @keyup.enter="saveTitle"
-              @keyup.esc="cancelTitle"
-            /><button class="primary-btn" @click="saveTitle">Save</button
-            ><button class="ghost-btn" @click="cancelTitle">Cancel</button>
-          </div>
-          <button v-else class="trip-title" @click="editTitle" title="Edit trip title">
-            {{ title }} <span>✎</span>
-          </button>
-          <p class="subtitle">
-            Four friends, one easygoing trip. <span class="lock">⌁</span> Private to your group.
-          </p>
-        </div>
-        <div class="hero-actions">
-          <NuxtLink class="ghost-btn" to="/trip-map">⌖ View map</NuxtLink
-          ><button class="ghost-btn" @click="assistantOpen = true">✦ Ask Roam AI</button
-          ><button class="primary-btn" @click="showAddEvent = true">＋ Add event</button>
-        </div>
-      </section>
-      <section class="trip-meta">
-        <div class="meta-item">
-          <span class="meta-icon">◷</span>
-          <div><strong>Sep 18 — 21, 2024</strong><small>4 days · Pacific Time</small></div>
-        </div>
-        <div class="meta-item">
-          <span class="meta-icon">♧</span>
-          <div>
-            <strong>{{ crew.length }} travelers</strong><small>All members can edit</small>
-          </div>
-        </div>
-        <div class="meta-item map-meta">
-          <span class="meta-icon">⌖</span>
-          <div><strong>Los Angeles, CA</strong><small>12 saved places</small></div>
-        </div>
-      </section>
+      <TripMeta
+        :days="days"
+        :crew-count="crew.length"
+        :title="title"
+        :event-count="events.length"
+      />
       <TripTimeline
         :events="selectedEvents"
         :active-day="activeDay"
@@ -262,225 +235,66 @@ function submitEvent(input: {
         @add-day="addDay"
       />
       <section class="lower-grid">
-        <div class="panel budget-panel">
-          <div class="panel-heading">
-            <div>
-              <div class="section-label">Trip budget</div>
-              <h2>Spend with intent</h2>
-            </div>
-            <strong
-              class="budget-progress-label"
-              :class="{ 'budget-progress-label--over': budget.progress >= 100 }"
-              >{{ Math.round(budget.progress) }}%</strong
-            >
-          </div>
-          <div class="budget-summary">
-            <div>
-              <strong>{{ `$${budget.total.toLocaleString()}` }}</strong
-              ><span>total budget</span>
-            </div>
-            <div>
-              <strong>{{ `$${budget.spent.toLocaleString()}` }}</strong
-              ><span>spent</span>
-            </div>
-            <div>
-              <strong>{{ `$${budget.remaining.toLocaleString()}` }}</strong
-              ><span>remaining</span>
-            </div>
-          </div>
-          <div
-            class="budget-progress"
-            role="progressbar"
-            aria-label="Trip budget spent"
-            :aria-valuenow="budget.progress"
-            aria-valuemin="0"
-            aria-valuemax="100"
-          >
-            <span :style="{ width: `${budget.progress}%` }"></span>
-          </div>
-          <div class="budget-categories">
-            <div v-for="category in budget.categories" :key="category.name">
-              <span>{{ category.name }}</span>
-              <strong>{{ `$${category.spent.toLocaleString()}` }}</strong>
-            </div>
-          </div>
-        </div>
+        <BudgetPanel :budget="budget" />
         <CrewList :members="crew" @invite="showInvite = true" />
       </section>
     </main>
-    <div v-if="selectedEvent" class="modal-overlay" @click.self="selectedEvent = null">
-      <aside class="event-detail">
-        <button class="close-btn" @click="selectedEvent = null">×</button>
-        <div class="section-label">Event detail</div>
-        <div class="event-detail-dot" :class="selectedEvent.tone"></div>
-        <h2>{{ selectedEvent.title }}</h2>
-        <p class="detail-place">⌖ {{ selectedEvent.place }}</p>
-        <a
-          class="map-action"
-          :href="`https://www.google.com/maps/search/?api=1&query=${selectedEvent.coords[0]},${selectedEvent.coords[1]}`"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Open in Google Maps ↗
-        </a>
-        <div class="detail-block">
-          <span class="section-label">Schedule</span
-          ><strong>{{ selectedEvent.time }} · {{ dayTitle }}</strong>
-        </div>
-        <div class="detail-block">
-          <span class="section-label">Travel</span
-          ><strong
-            >{{ selectedEvent.travelTime || "Route details loading" }} ·
-            {{ selectedEvent.transport || "Walking" }}</strong
-          >
-        </div>
-        <div v-if="selectedEvent.recommendations.length" class="detail-block">
-          <span class="section-label">Recommendations</span>
-          <ul>
-            <li v-for="item in selectedEvent.recommendations" :key="item">{{ item }}</li>
-          </ul>
-        </div>
-        <div v-if="selectedEvent.food.length" class="detail-block">
-          <span class="section-label">Nearby food</span>
-          <ul>
-            <li v-for="item in selectedEvent.food" :key="item">{{ item }}</li>
-          </ul>
-        </div>
-        <div v-if="selectedEvent.todos.length" class="detail-block">
-          <span class="section-label">Todos</span>
-          <label v-for="todo in selectedEvent.todos" :key="todo.text"
-            ><input v-model="todo.completed" type="checkbox" /> {{ todo.text
-            }}<small v-if="todo.assignee"> · {{ todo.assignee }}</small></label
-          >
-        </div>
-        <div class="detail-block">
-          <span class="section-label">Split bill</span
-          ><strong>{{
-            selectedEvent.bill.length ? `${selectedEvent.bill.length} items added` : "No bill added"
-          }}</strong
-          ><input
-            ref="receiptFile"
-            class="visually-hidden"
-            type="file"
-            accept="image/*"
-            @change="handleReceipt"
-          /><button
-            class="primary-btn detail-action"
-            :disabled="receiptProcessing"
-            @click="scanReceipt"
-          >
-            {{ receiptProcessing ? "Scanning…" : "Scan receipt" }}</button
-          ><small v-if="receiptMessage" class="receipt-message">{{ receiptMessage }}</small>
-        </div>
-        <button class="primary-btn detail-action" @click="selectedEvent = null">
-          Save details
-        </button>
-      </aside>
-    </div>
-    <div v-if="discussionPreview" class="modal-overlay">
-      <aside class="assistant-panel discussion-preview">
-        <div class="preview-kicker"><span class="preview-spark">✦</span> Roam made a route</div>
-        <h2>{{ generatedPreview?.title || "Your trip starts here" }}</h2>
-        <p v-if="generatedPreview" class="preview-subtitle">
-          {{ generatedPreview.destination }} <span>·</span> {{ generatedPreview.dates }}
-        </p>
-        <div v-if="generatedPreview" class="preview-itinerary">
-          <section v-for="day in previewDays" :key="day.day" class="preview-day">
-            <div class="preview-day-marker">
-              <span>Day</span><strong>{{ day.day }}</strong>
-            </div>
-            <div class="preview-day-stops">
-              <article
-                v-for="event in day.events"
-                :key="`${event.day}-${event.time}-${event.title}`"
-                class="preview-stop"
-              >
-                <div class="preview-stop-time">{{ event.time }}</div>
-                <div class="preview-stop-pin"></div>
-                <div class="preview-stop-copy">
-                  <strong>{{ event.title }}</strong>
-                  <small>{{ event.place }}</small>
-                  <span v-if="event.recommendations.length">{{ event.recommendations[0] }}</span>
-                  <span v-if="event.food.length" class="preview-note"
-                    >Eat nearby · {{ event.food[0] }}</span
-                  >
-                </div>
-              </article>
-            </div>
-          </section>
-        </div>
-        <div v-else class="assistant-stream">
-          <div
-            v-for="(message, index) in discussionMessages"
-            :key="index"
-            :class="['landing-message', { user: message.role === 'user' }]"
-          >
-            <VueMarkdown
-              :source="message.content"
-              :options="{ html: false, breaks: true, linkify: true }"
-            />
-          </div>
-        </div>
-        <small v-if="itineraryError" class="assistant-error">{{ itineraryError }}</small>
-        <div class="preview-actions">
-          <button class="preview-secondary ghost-btn" @click="closeDiscussionPreview">
-            Start blank
-          </button>
-          <button
-            v-if="!generatedPreview"
-            class="preview-primary primary-btn"
-            :disabled="itineraryLoading"
-            @click="generateItinerary"
-          >
-            {{ itineraryLoading ? "Building itinerary…" : "Build this route" }}
-          </button>
-          <button v-else class="preview-primary primary-btn" @click="useDiscussionPlan">
-            Use this route <span>↗</span>
-          </button>
-        </div>
-      </aside>
-    </div>
-    <div v-if="assistantOpen" class="modal-overlay" @click.self="assistantOpen = false">
-      <aside class="assistant-panel">
-        <button class="close-btn" @click="assistantOpen = false">×</button>
-        <div class="section-label">Ask Roam AI</div>
-        <h2>Shape this trip</h2>
-        <div class="assistant-stream">
-          <div
-            v-for="(message, index) in assistantMessages"
-            :key="index"
-            :class="['landing-message', { user: message.role === 'user' }]"
-          >
-            <VueMarkdown
-              :source="message.content"
-              :options="{ html: false, breaks: true, linkify: true }"
-            />
-          </div>
-          <div v-if="!assistantMessages.length" class="landing-message">
-            I know this trip. Ask about timing, food, routes, or tradeoffs.
-          </div>
-          <div v-if="assistantLoading" class="landing-message">Thinking…</div>
-          <div v-if="assistantError" class="landing-message assistant-error">
-            {{ assistantError }}
-          </div>
-        </div>
-        <div class="chat-compose">
-          <textarea
-            v-model="assistantNote"
-            placeholder="Ask about this trip…"
-            @keyup.enter.exact="sendAssistantMessage"
-          ></textarea>
-          <button :disabled="assistantLoading" @click="sendAssistantMessage">Send ↗</button>
-        </div>
-      </aside>
-    </div>
-    <AddEventModal
+    <EventDetailSheet
+      :event="selectedEvent"
+      :date-time="draftEventDateTime"
+      :notes="draftEventNotes"
+      :receipt-processing="receiptProcessing"
+      :receipt-message="receiptMessage"
+      @close="selectedEvent = null"
+      @update:date-time="draftEventDateTime = $event"
+      @update:notes="draftEventNotes = $event"
+      @save="saveEventDetails"
+      @scan="scanReceipt"
+      @receipt="handleReceipt"
+    />
+    <DiscussionPreviewSheet
+      v-model="discussionPreview"
+      :generated-preview="generatedPreview"
+      :implementation-preview="implementationPreview"
+      :preview-days="previewDays"
+      :implementation-days="implementationDays"
+      :messages="discussionMessages"
+      :loading="itineraryLoading"
+      :error="itineraryError"
+      @generate="generateItinerary"
+      @use="
+        useDiscussionPlan();
+        closeDiscussionPreview();
+      "
+      @apply="applyImplementationPlan"
+      @close="closeDiscussionPreview"
+      @cancel="
+        implementationPreview = null;
+        discussionPreview = false;
+      "
+    />
+    <AssistantSheet
+      v-model="assistantOpen"
+      :note="assistantNote"
+      :messages="assistantMessages"
+      :loading="assistantLoading"
+      :error="assistantError"
+      :implementation-loading="assistantImplementationLoading"
+      @update:note="assistantNote = $event"
+      @send="sendAssistantMessage"
+      @implement="implementAssistantPlan"
+      @close="assistantOpen = false"
+    />
+    <AddEventSheet
       v-if="showAddEvent"
+      :days="days"
+      :initial-day="activeDay"
       @submit="submitEvent"
       @close="showAddEvent = false"
-    /><InviteModal v-if="showInvite" :title="title" @close="showInvite = false" />
+    />
+    <InviteSheet v-if="showInvite" :title="title" @close="showInvite = false" />
   </div>
 </template>
 
-<style src="~/assets/styles/components/modals.css"></style>
-<style src="~/assets/styles/pages/trip.css"></style>
+<style scoped src="~/assets/styles/components/modals.css"></style>
+<style scoped src="~/assets/styles/pages/trip.css"></style>

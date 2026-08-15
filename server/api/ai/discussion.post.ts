@@ -20,14 +20,10 @@ export default defineEventHandler(async (event) => {
 
   const history = Array.isArray(body.history)
     ? body.history
-        .filter(
-          (item): item is DiscussionMessage =>
-            !!item &&
-            typeof item === "object" &&
-            ((item as DiscussionMessage).role === "user" ||
-              (item as DiscussionMessage).role === "assistant") &&
-            typeof (item as DiscussionMessage).content === "string",
-        )
+        .filter((item: DiscussionMessage | undefined): item is DiscussionMessage => {
+          if (!item) return false;
+          return ["user", "assistant"].includes(item.role) && !!item.content;
+        })
         .slice(-4)
         .map((item) => ({ ...item, content: item.content.slice(0, 800) }))
     : [];

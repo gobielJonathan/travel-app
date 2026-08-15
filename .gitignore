@@ -26,3 +26,7 @@ dist-ssr
 
 .output
 .nuxt
+.playwright-mcp
+.env
+!.env.example
+.scratch

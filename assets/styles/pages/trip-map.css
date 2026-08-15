@@ -20,6 +20,31 @@
 .map-page .hero-row {
   padding-bottom: 18px;
 }
+.timeline-map-marker {
+  position: relative;
+  display: block;
+  width: 42px;
+  height: 48px;
+}
+.timeline-map-marker-pin {
+  position: absolute;
+  top: 1px;
+  left: 5px;
+  width: 30px;
+  height: 30px;
+  border: 3px solid var(--paper);
+  border-radius: 50% 50% 50% 0;
+  background: var(--orange);
+  box-shadow: 0 3px 8px #17252255;
+  transform: rotate(-45deg);
+}
+.timeline-map-marker-pin::after {
+  position: absolute;
+  inset: 7px;
+  border-radius: 50%;
+  background: var(--paper);
+  content: "";
+}
 .map-canvas {
   height: calc(100svh - 210px);
   min-height: 360px;
@@ -30,6 +55,25 @@
 @media (min-width: 801px) {
   .map-page .hero-row {
     flex-direction: row;
+  }
+  .current-location-marker {
+    display: grid;
+    width: 24px;
+    height: 24px;
+    place-items: center;
+    border: 2px solid var(--white);
+    border-radius: 50%;
+    background: #527d87aa;
+    box-shadow:
+      0 0 0 6px #527d8733,
+      0 3px 8px #17252255;
+  }
+  .current-location-marker-dot {
+    width: 10px;
+    height: 10px;
+    border: 2px solid var(--white);
+    border-radius: 50%;
+    background: var(--blue);
   }
   .map-canvas {
     height: min(620px, calc(100vh - 210px));

@@ -1,22 +1,61 @@
+.add-event-sheet .bsw-bottom-sheet-panel,
+.assistant-sheet .bsw-bottom-sheet-panel,
+.invite-sheet .bsw-bottom-sheet-panel,
+.existing-plan-sheet .bsw-bottom-sheet-panel {
+  height: auto !important;
+  max-height: 90dvh;
+  overflow-y: auto;
+  padding: 0;
+}
+.existing-plan-sheet .bsw-bottom-sheet-panel {
+  max-height: none;
+}
+.existing-plan-sheet .bsw-bottom-sheet-content {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+.existing-plan-sheet .existing-plan-dialog {
+  position: relative;
+  inset: auto;
+  width: 100%;
+  max-height: none;
+  transform: none;
+}
+.add-event-sheet .add-event-dialog,
+.assistant-sheet .assistant-panel,
+.invite-sheet .invite-dialog,
+.existing-plan-sheet .existing-plan-dialog {
+  width: 100%;
+  max-height: none;
+  overflow: visible;
+  margin: 0;
+  border: 0;
+  box-shadow: none;
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;
   z-index: 30;
   display: flex;
   align-items: flex-end;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: #17252299;
 }
 .modal-surface,
-.invite-modal,
+.add-event-dialog,
 .invite-dialog {
   width: 100%;
   max-height: 90svh;
   overflow: auto;
   position: relative;
-  padding: 38px 20px calc(28px + env(safe-area-inset-bottom));
+  padding: 1rem 20px calc(28px + env(safe-area-inset-bottom));
   border: 1px solid var(--line);
   background: var(--paper);
   color: var(--graphite);
+  overscroll-behavior: contain;
   box-shadow: 0 -12px 35px #17252233;
 }
 .modal-close,
@@ -32,19 +71,20 @@
   color: var(--muted);
   font-size: 26px;
 }
-.invite-code-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 24px;
-  padding: 14px;
-  border: 1px dashed var(--blue);
-  background: #527d8712;
-  color: var(--night);
-  font:
-    500 14px IBM Plex Mono,
-    monospace;
+.invite-qr {
+  display: grid;
+  width: min(220px, 100%);
+  margin: 24px auto 0;
+  padding: 12px;
+  place-items: center;
+  background: var(--white);
+  border: 1px solid var(--line);
+}
+.invite-qr img {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
 }
 .invite-copy {
   min-height: 40px;
@@ -67,8 +107,156 @@
   font-size: 11px;
   font-weight: 800;
 }
+.notes-field {
+  display: block;
+  margin-top: 18px;
+}
+.notes-label,
+.notes-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.notes-label {
+  color: var(--night);
+  font-size: 12px;
+  font-weight: 800;
+}
+.notes-label small {
+  color: var(--muted);
+  font:
+    10px IBM Plex Mono,
+    monospace;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+.notes-field textarea {
+  display: block;
+  width: 100%;
+  min-height: 96px;
+  margin-top: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--orange);
+  border-radius: 0;
+  background: #fffaf2;
+  color: var(--graphite);
+  font: inherit;
+  line-height: 1.5;
+  resize: vertical;
+}
+.notes-field textarea::placeholder {
+  color: #9a9184;
+}
+.notes-field textarea:focus {
+  outline: 2px solid var(--orange);
+  outline-offset: 2px;
+}
+.notes-footer {
+  margin-top: 6px;
+  color: var(--muted);
+  font:
+    10px IBM Plex Mono,
+    monospace;
+}
+.notes-footer span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.existing-plan-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: min(520px, calc(100% - 32px));
+  max-height: calc(100vh - 32px);
+  margin: 0;
+  transform: translate(-50%, -50%);
+  padding: 34px;
+  border: 1px solid var(--night);
+  background: var(--night);
+  color: var(--paper);
+  box-shadow: 10px 10px var(--orange);
+}
+.existing-plan-dialog::backdrop {
+  background: #172522b8;
+  backdrop-filter: blur(5px);
+}
+.existing-plan-mark {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  margin-bottom: 28px;
+  border: 1px solid var(--orange);
+  color: var(--orange);
+  font-size: 28px;
+}
+.existing-plan-kicker {
+  margin: 0 0 10px;
+  color: var(--orange);
+  font:
+    700 10px IBM Plex Mono,
+    monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.existing-plan-dialog h2 {
+  max-width: 410px;
+  margin: 0;
+  color: var(--paper);
+  font:
+    500 clamp(30px, 5vw, 48px) "DM Serif Display",
+    Georgia,
+    serif;
+  line-height: 0.98;
+}
+.existing-plan-copy {
+  max-width: 390px;
+  margin: 18px 0 0;
+  color: #d4d0c5;
+  line-height: 1.55;
+}
+.existing-plan-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr;
+  gap: 10px;
+  margin-top: 32px;
+}
+.existing-plan-actions button {
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1px solid #777b70;
+  background: transparent;
+  color: var(--paper);
+  font:
+    700 11px IBM Plex Mono,
+    monospace;
+  letter-spacing: 0.02em;
+}
+.existing-plan-actions button:last-child {
+  border-color: var(--orange);
+  background: var(--orange);
+  color: var(--night);
+}
+.existing-plan-actions button:hover,
+.existing-plan-actions button:focus-visible {
+  outline: 2px solid var(--paper);
+  outline-offset: 3px;
+}
+@media (max-width: 560px) {
+  .existing-plan-dialog {
+    width: calc(100% - 24px);
+    padding: 26px 22px 22px;
+    box-shadow: 6px 6px var(--orange);
+  }
+  .existing-plan-actions {
+    grid-template-columns: 1fr;
+  }
+}
 @media (min-width: 801px) {
-  .modal-overlay:has(.invite-modal),
+  .modal-overlay:has(.add-event-dialog),
   .modal-overlay:has(.invite-dialog) {
     align-items: center;
     justify-content: center;
