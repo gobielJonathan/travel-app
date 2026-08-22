@@ -11,8 +11,6 @@ type GatekeeperVerdict = {
 
 const MAX_GATEKEEPER_INPUT_LENGTH = 12000;
 const GATEKEEPER_TIMEOUT_MS = 8000;
-const promptInjectionPattern =
-  /\b(?:ignore|disregard|override|forget|reveal|expose|print|show)\b[\s\S]{0,120}\b(?:system|developer|instruction|prompt|secret|api[\s_-]?key|tool|policy)\b/i;
 
 const gatekeeperPrompt = `You are Roam's strict travel-plan request gatekeeper.
 Return JSON only in exactly this shape: {"allow":true} or {"allow":false}.
@@ -52,12 +50,6 @@ export async function assertTravelPromptAllowed(
   const userInput = input.trim().slice(0, MAX_GATEKEEPER_INPUT_LENGTH);
   if (!userInput) {
     throw createError({ statusCode: 400, statusMessage: "Travel request is required" });
-  }
-  if (promptInjectionPattern.test(userInput)) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: "Please keep your request related to planning or managing a trip.",
-    });
   }
 
   let verdict: GatekeeperVerdict | null = null;
