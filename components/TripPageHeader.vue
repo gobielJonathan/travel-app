@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import type { TripSyncRole } from "~/types/trip";
+
 const props = defineProps<{
   title: string;
   crew: { initials: string; name: string }[];
+  role: TripSyncRole;
   editingTitle: boolean;
   draftTitle: string;
   completed: boolean;
@@ -24,6 +27,7 @@ const emit = defineEmits<{
     </div>
     <div class="top-actions">
       <div class="avatar">{{ props.crew[0]?.initials || "?" }}</div>
+      <span v-if="props.role === 'host'" class="user-role">Host</span>
       <span class="user-name">{{ props.crew[0]?.name || "Your trip" }}</span>
     </div>
   </header>
@@ -107,6 +111,14 @@ const emit = defineEmits<{
 }
 .user-name {
   display: none;
+}
+.user-role {
+  color: var(--orange);
+  font:
+    700 9px IBM Plex Mono,
+    monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 .trip-title {
   border: 0;

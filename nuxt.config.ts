@@ -1,19 +1,30 @@
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineNuxtConfig({
+  modules: ["@vite-pwa/nuxt"],
   ssr: false,
   compatibilityDate: "2026-08-09",
+  app: {
+    head: {
+      link: [
+        { rel: "manifest", href: "/manifest.webmanifest" },
+        { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+        { rel: "apple-touch-icon", href: "/pwa-192x192.png" },
+      ],
+    },
+  },
   css: [
     "~/assets/style.css",
+    "~/assets/styles/components/modals.css",
     "leaflet/dist/leaflet.css",
     "@coderoycc/bottom-sheet-wrappers/style.css",
   ],
-  devServer: {
-    https: {
-      key: "./.ssl/localhost+1-key.pem",
-      cert: "./.ssl/localhost+1.pem",
-    },
-  },
+  // devServer: {
+  //   https: {
+  //     key: "./.ssl/localhost+1-key.pem",
+  //     cert: "./.ssl/localhost+1.pem",
+  //   },
+  // },
   vite: { plugins: [tailwindcss()] },
   nitro: {
     experimental: {
@@ -21,15 +32,47 @@ export default defineNuxtConfig({
     },
   },
   devtools: { enabled: false },
+  pwa: {
+    registerType: "prompt",
+    client: {
+      periodicSyncForUpdates: 3600,
+    },
+    workbox: {
+      globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest}"],
+    },
+    manifest: {
+      name: "Roam — Shared Trip Planning",
+      short_name: "Roam",
+      description: "Plan trips together, even when the signal disappears.",
+      start_url: "/",
+      scope: "/",
+      display: "standalone",
+      background_color: "#172522",
+      theme_color: "#172522",
+      icons: [
+        {
+          src: "/pwa-192x192.png",
+          sizes: "192x192",
+          type: "image/png",
+          purpose: "any",
+        },
+        {
+          src: "/pwa-512x512.png",
+          sizes: "512x512",
+          type: "image/png",
+          purpose: "any",
+        },
+        {
+          src: "/pwa-maskable-512x512.png",
+          sizes: "512x512",
+          type: "image/png",
+          purpose: "maskable",
+        },
+      ],
+    },
+  },
   runtimeConfig: {
     deepseekApiKey: process.env.DEEPSEEK_API_KEY || "",
     deepseekModel: process.env.DEEPSEEK_MODEL || "deepseek-chat",
-    gatekeeperApiKey: process.env.GATEKEEPER_API_KEY || "",
-    gatekeeperBaseUrl:
-      process.env.GATEKEEPER_BASE_URL ||
-      "https://ws-8tr8jnnzj3p6xmk6.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
-    gatekeeperModel: process.env.GATEKEEPER_MODEL || "",
-    gatekeeperWorkspaceName: process.env.GATEKEEPER_WORKSPACE_NAME || "",
-    gatekeeperWorkspaceId: process.env.GATEKEEPER_WORKSPACE_ID || "",
   },
 });

@@ -1,5 +1,8 @@
+import { logAiUsage } from "~/server/utils/ai-usage";
+
 type GatekeeperResponse = {
   choices?: Array<{ message?: { content?: string } }>;
+  usage?: unknown;
 };
 
 type GatekeeperVerdict = {
@@ -39,9 +42,10 @@ function parseVerdict(content: string): GatekeeperVerdict | null {
 export async function assertTravelPromptAllowed(
   event: Parameters<typeof useRuntimeConfig>[0],
   input: string,
+  workspaceCode?: unknown,
 ) {
   const config = useRuntimeConfig(event);
-  if (!config.gatekeeperApiKey || !config.gatekeeperBaseUrl || !config.gatekeeperModel) {
+  if (!config.deepseekApiKey) {
     throw createError({ statusCode: 503, statusMessage: "AI gatekeeper is not configured" });
   }
 
@@ -56,41 +60,30 @@ export async function assertTravelPromptAllowed(
     });
   }
 
-  const workspace = [config.gatekeeperWorkspaceName, config.gatekeeperWorkspaceId]
-    .filter(Boolean)
-    .join(" / ");
-
   let verdict: GatekeeperVerdict | null = null;
   try {
-    const response = await $fetch<GatekeeperResponse>(
-      `${config.gatekeeperBaseUrl.replace(/\/$/, "")}/chat/completions`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${config.gatekeeperApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: {
-          model: config.gatekeeperModel,
-          response_format: { type: "json_object" },
-          messages: [
-            {
-              role: "system",
-              content: workspace
-                ? `${gatekeeperPrompt}\nWorkspace: ${workspace}`
-                : gatekeeperPrompt,
-            },
-            {
-              role: "user",
-              content: `<USER_INPUT>\n${userInput}\n</USER_INPUT>`,
-            },
-          ],
-          temperature: 0,
-          max_tokens: 20,
-        },
-        signal: AbortSignal.timeout(GATEKEEPER_TIMEOUT_MS),
+    const response = await $fetch<GatekeeperResponse>("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.deepseekApiKey}`,
+        "Content-Type": "application/json",
       },
-    );
+      body: {
+        model: config.deepseekModel || "deepseek-chat",
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: gatekeeperPrompt },
+          {
+            role: "user",
+            content: `<USER_INPUT>\n${userInput}\n</USER_INPUT>`,
+          },
+        ],
+        temperature: 0,
+        max_tokens: 20,
+      },
+      signal: AbortSignal.timeout(GATEKEEPER_TIMEOUT_MS),
+    });
+    logAiUsage(workspaceCode, "else", response.usage);
     const content = response.choices?.[0]?.message?.content?.trim();
     if (content) verdict = parseVerdict(content);
   } catch (error) {

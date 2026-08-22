@@ -1,25 +1,48 @@
 import { computed } from "vue";
-import type { BillItem, TripDay, TripEvent } from "~/types/trip";
-import { useInvite } from "~/composables/useInvite";
+import type { BillItem, TripDay, TripEvent, TripSnapshot, TripVersion } from "~/types/trip";
+import { getTripStorageKeys, saveTripSnapshot } from "~/utils/itineraryStorage";
 
 type SyncState = "synced" | "pending" | "conflict" | "error";
 
-const deletedEventIdsKey = "roam-deleted-event-ids";
-const tripTitleKey = "roam-trip-title";
-const tripStateKey = "roam-trip-state";
+function createPeerId() {
+  if (typeof globalThis.crypto?.randomUUID === "function") return globalThis.crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function cloneSnapshot(value: TripSnapshot): TripSnapshot {
+  return {
+    title: value.title,
+    days: value.days.map((day) => ({ ...day })),
+    events: value.events.map((event) => ({
+      ...event,
+      coords: [...event.coords] as [number, number],
+      bill: event.bill.map((item) => ({ ...item })),
+      recommendations: [...event.recommendations],
+      food: [...event.food],
+      todos: event.todos.map((todo) => ({ ...todo })),
+    })),
+    deletedEventIds: [...value.deletedEventIds],
+    completed: value.completed,
+    version: { ...value.version },
+  };
+}
 
 export function useTrip() {
-  const storedState = JSON.parse(localStorage.getItem(tripStateKey) ?? "null") as {
+  const { inviteCode } = useInvite();
+  const storageKeys = getTripStorageKeys(inviteCode.value);
+  const storedState = JSON.parse(localStorage.getItem(storageKeys.state) ?? "null") as {
     title?: string;
     days?: TripDay[];
     events?: TripEvent[];
     deletedEventIds?: string[];
     completed?: boolean;
+    version?: TripVersion;
   } | null;
+  const peerId = useState("trip-peer-id", createPeerId);
   const deletedEventIds =
     storedState?.deletedEventIds ??
-    (JSON.parse(localStorage.getItem(deletedEventIdsKey) ?? "[]") as string[]);
-  const state = useState("trip-state", () => {
+    (JSON.parse(localStorage.getItem(storageKeys.deletedEventIds) ?? "[]") as string[]);
+  const state = useState(`trip-state:${inviteCode.value}`, () => {
     const days = storedState?.days?.map((day) => ({ ...day })) ?? [];
     const today = new Date();
     const currentDay = days.findIndex(
@@ -28,7 +51,7 @@ export function useTrip() {
         day.month === today.toLocaleDateString("en-US", { month: "short" }),
     );
     return {
-      title: storedState?.title || localStorage.getItem(tripTitleKey) || "",
+      title: storedState?.title || localStorage.getItem(storageKeys.title) || "",
       activeDay: currentDay >= 0 ? currentDay : 0,
       days,
       events: storedState?.events?.map((event) => ({ ...event, bill: [...event.bill] })) ?? [],
@@ -37,19 +60,35 @@ export function useTrip() {
       conflicts: [] as string[],
       deletedEventIds,
       completed: storedState?.completed ?? false,
+      version: storedState?.version ?? { counter: 0, peerId: peerId.value },
     };
   });
+  const listeners = new Set<(snapshot: TripSnapshot) => void>();
+
+  const snapshot = computed<TripSnapshot>(() =>
+    cloneSnapshot({
+      title: state.value.title,
+      days: state.value.days,
+      events: state.value.events,
+      deletedEventIds: state.value.deletedEventIds,
+      completed: state.value.completed,
+      version: state.value.version,
+    }),
+  );
+
   function persist() {
-    localStorage.setItem(
-      tripStateKey,
-      JSON.stringify({
-        title: state.value.title,
-        days: state.value.days,
-        events: state.value.events,
-        deletedEventIds: state.value.deletedEventIds,
-        completed: state.value.completed,
-      }),
-    );
+    const nextSnapshot = snapshot.value;
+    localStorage.setItem(storageKeys.state, JSON.stringify(nextSnapshot));
+    void saveTripSnapshot(nextSnapshot, inviteCode.value).catch(() => undefined);
+  }
+  function commitLocalChange() {
+    state.value.version = {
+      counter: state.value.version.counter + 1,
+      peerId: peerId.value,
+    };
+    persist();
+    const nextSnapshot = snapshot.value;
+    for (const listener of listeners) listener(nextSnapshot);
   }
   const title = computed({
     get: () => state.value.title,
@@ -57,8 +96,8 @@ export function useTrip() {
       const nextTitle = value.trim();
       state.value.title = nextTitle;
       state.value.syncState = "pending";
-      localStorage.setItem(tripTitleKey, nextTitle);
-      persist();
+      localStorage.setItem(storageKeys.title, nextTitle);
+      commitLocalChange();
     },
   });
   const activeDay = computed({
@@ -108,7 +147,7 @@ export function useTrip() {
     });
     state.value.activeDay = state.value.days.length - 1;
     state.value.syncState = "pending";
-    persist();
+    commitLocalChange();
   }
 
   function updateDayDate(index: number, date: Pick<TripDay, "label" | "date" | "month">) {
@@ -116,6 +155,7 @@ export function useTrip() {
     if (!day) return false;
     Object.assign(day, date);
     state.value.syncState = "pending";
+    commitLocalChange();
     return true;
   }
 
@@ -124,9 +164,9 @@ export function useTrip() {
     if (index < 0) return false;
     state.value.events.splice(index, 1);
     if (!state.value.deletedEventIds.includes(id)) state.value.deletedEventIds.push(id);
-    localStorage.setItem(deletedEventIdsKey, JSON.stringify(state.value.deletedEventIds));
+    localStorage.setItem(storageKeys.deletedEventIds, JSON.stringify(state.value.deletedEventIds));
     state.value.syncState = "pending";
-    persist();
+    commitLocalChange();
     return true;
   }
 
@@ -155,7 +195,7 @@ export function useTrip() {
       todos: [],
     });
     state.value.syncState = "pending";
-    persist();
+    commitLocalChange();
   }
   function replaceItinerary(itinerary: {
     title: string;
@@ -190,7 +230,7 @@ export function useTrip() {
       bill: [],
     }));
     state.value.syncState = "pending";
-    persist();
+    commitLocalChange();
   }
 
   function implementEvents(
@@ -201,6 +241,26 @@ export function useTrip() {
       >
     >,
   ) {
+    const lastEventDay = events.reduce((highest, event) => Math.max(highest, event.day), -1);
+    while (state.value.days.length <= lastEventDay) {
+      const lastDay = state.value.days[state.value.days.length - 1];
+      const nextDate = lastDay
+        ? new Date(
+            new Date().getFullYear(),
+            new Date(`${lastDay.month} ${lastDay.date}, 2024`).getMonth(),
+            Number(lastDay.date) + 1,
+          )
+        : new Date();
+      state.value.days.push({
+        label: nextDate.toLocaleDateString("en-US", { weekday: "short" }),
+        date: String(nextDate.getDate()),
+        month: nextDate.toLocaleDateString("en-US", { month: "short" }),
+        count: 0,
+      });
+    }
+    const firstImplementedDay = events.find((event) => event.day >= 0)?.day;
+    if (firstImplementedDay !== undefined)
+      state.value.activeDay = Math.min(firstImplementedDay, state.value.days.length - 1);
     state.value.events.push(
       ...events.map((event, index) => ({
         ...event,
@@ -210,7 +270,7 @@ export function useTrip() {
       })),
     );
     state.value.syncState = "pending";
-    persist();
+    commitLocalChange();
   }
 
   function updateEvent(id: string, changes: Pick<TripEvent, "day" | "time" | "notes">) {
@@ -220,42 +280,51 @@ export function useTrip() {
     event.time = changes.time;
     event.notes = changes.notes?.trim();
     state.value.syncState = "pending";
-    persist();
+    commitLocalChange();
     return true;
   }
 
   function addBillItem(event: TripEvent, item: BillItem) {
     event.bill.push(item);
     state.value.syncState = "pending";
+    commitLocalChange();
   }
   function toggleSettled(item: BillItem) {
     item.settled = !item.settled;
     state.value.syncState = "pending";
+    commitLocalChange();
   }
 
   function completeTrip() {
     state.value.completed = true;
     state.value.syncState = "pending";
+    commitLocalChange();
+  }
+
+  function applySnapshot(nextSnapshot: TripSnapshot) {
+    const next = cloneSnapshot(nextSnapshot);
+    state.value.title = next.title;
+    state.value.days = next.days;
+    state.value.events = next.events;
+    state.value.deletedEventIds = next.deletedEventIds;
+    state.value.completed = next.completed;
+    state.value.version = next.version;
+    state.value.syncState = "synced";
+    state.value.syncError = "";
+    localStorage.setItem(storageKeys.title, next.title);
+    localStorage.setItem(storageKeys.deletedEventIds, JSON.stringify(next.deletedEventIds));
     persist();
   }
 
-  async function syncWorkspace() {
-    const { inviteCode } = useInvite();
-    state.value.syncState = "pending";
-    try {
-      await $fetch("/api/workspaces/sync", {
-        method: "POST",
-        body: { workspaceCode: inviteCode.value },
-      });
-      state.value.syncState = "synced";
-      state.value.syncError = "";
-    } catch (error) {
-      state.value.syncState = "error";
-      state.value.syncError = error instanceof Error ? error.message : "Sync failed";
-    }
+  function subscribeToChanges(listener: (nextSnapshot: TripSnapshot) => void) {
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+    };
   }
 
   return {
+    peerId,
     title,
     activeDay,
     days,
@@ -263,6 +332,9 @@ export function useTrip() {
     budget,
     selectedEvents,
     dayTitle,
+    snapshot,
+    applySnapshot,
+    subscribeToChanges,
     crew: [],
     synced: computed(() => state.value.syncState === "synced"),
     syncState: computed(() => state.value.syncState),
@@ -276,7 +348,6 @@ export function useTrip() {
       state.value.syncState = "error";
       state.value.syncError = message;
     },
-    syncWorkspace,
     addDay,
     updateDayDate,
     deleteEvent,

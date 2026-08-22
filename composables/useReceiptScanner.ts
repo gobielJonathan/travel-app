@@ -2,6 +2,7 @@ import type { BillItem } from "~/types/trip";
 import readReceiptText from "~/utils/receipt-reader";
 
 export function useReceiptScanner() {
+  const { inviteCode } = useInvite();
   const processing = ref(false);
 
   async function scan(file: File) {
@@ -16,7 +17,7 @@ export function useReceiptScanner() {
 
       const response = await $fetch<{ items: BillItem[] }>("/api/ai/receipt", {
         method: "POST",
-        body: { text },
+        body: { text, workspaceCode: inviteCode.value },
       });
       if (!Array.isArray(response.items)) throw new Error("Receipt analysis unavailable.");
       return response.items;

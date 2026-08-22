@@ -1,9 +1,14 @@
 <script setup lang="ts">
-import type { TripEvent } from "~/types/trip";
-import type { GeneratedItinerary } from "~/types/itinerary";
+import type { TripEvent, TripSnapshot } from "~/types/trip";
 import { useTripAssistant } from "~/composables/useTripAssistant";
 import { useItineraryPreview } from "~/composables/useItineraryPreview";
-import { clearItinerary, loadItinerary } from "~/utils/itineraryStorage";
+import {
+  clearItinerary,
+  clearTripSnapshot,
+  getTripStorageKeys,
+  loadItinerary,
+  loadTripSnapshot,
+} from "~/utils/itineraryStorage";
 import { useTripSync } from "~/composables/useTripSync";
 import { useTripModals } from "~/composables/useTripModals";
 import { useTripEventEditor } from "~/composables/useTripEventEditor";
@@ -33,50 +38,67 @@ const {
   deleteEvent,
   replaceItinerary,
   implementEvents,
-  syncWorkspace,
+  snapshot,
+  peerId,
+  applySnapshot,
+  subscribeToChanges,
+  markSynced,
 } = useTrip();
 const route = useRoute();
-const { inviteCode } = useInvite();
-const tripSync = useTripSync(inviteCode);
+const { inviteCode, role } = useInvite();
+const tripSync = useTripSync(inviteCode, role, peerId);
+let stopListening: () => void = () => undefined;
+const syncStatus = computed(() => {
+  if (tripSync.status.value === "waiting") return "Waiting for host";
+  if (tripSync.status.value === "syncing") return "Syncing trip";
+  if (tripSync.status.value === "connected") return "Online";
+  if (tripSync.status.value === "error") return "Sync unavailable";
+  return "Connecting";
+});
 const crew = computed(() => [
   ...baseCrew,
-  ...tripSync.members.value.map((id, index) => ({
-    initials: id.slice(0, 2).toUpperCase(),
+  ...tripSync.members.value.map((member, index) => ({
+    initials: member.peerId.slice(0, 2).toUpperCase(),
     name: `Traveler ${index + 1}`,
     role: "Joined traveler",
     tone: ["coral", "blue", "gold", "mint"][index % 4],
+    online: member.online,
   })),
 ]);
-const syncSnapshot = computed(() => ({
-  title: title.value,
-  events: events.value.map(({ id: _id, tone: _tone, bill: _bill, ...event }) => event),
-  days: days.value,
-  budget: budget.value,
-  completed: completed.value,
-}));
-
 function updateEvent(id: string, changes: Pick<TripEvent, "day" | "time" | "notes">) {
   const updated = updateTripEvent(id, changes);
-  if (updated) tripSync.publish(syncSnapshot.value);
   return updated;
 }
 
 onMounted(() => {
-  void tripSync.connect(applySyncSnapshot, applySyncSnapshot, () => syncSnapshot.value);
-  void Promise.all([syncWorkspace(), loadItinerary()]).then(([, saved]) => {
-    if (!saved || localStorage.getItem("roam-trip-state")) return;
-    replaceItinerary(saved);
-    if (route.query.preview === "1" && sessionStorage.getItem("roam-discussion:used") !== "1") {
-      generatedPreview.value = saved;
-      discussionPreview.value = true;
-    }
-  });
+  const storageKeys = getTripStorageKeys(inviteCode.value);
+  void Promise.all([loadTripSnapshot(inviteCode.value), loadItinerary()]).then(
+    ([savedSnapshot, saved]) => {
+      if (!localStorage.getItem(storageKeys.state)) {
+        if (savedSnapshot) applySnapshot(savedSnapshot);
+        else if (saved) {
+          replaceItinerary(saved);
+          if (
+            route.query.preview === "1" &&
+            sessionStorage.getItem("roam-discussion:used") !== "1"
+          ) {
+            generatedPreview.value = saved;
+            discussionPreview.value = true;
+          }
+        }
+      }
+      stopListening = subscribeToChanges((nextSnapshot) => {
+        tripSync.publish(nextSnapshot);
+        markSynced();
+      });
+      tripSync.connect(() => snapshot.value, applySyncSnapshot);
+    },
+  );
 });
+onBeforeUnmount(() => stopListening());
 
-function applySyncSnapshot(payload: unknown) {
-  if (!payload || typeof payload !== "object" || !("title" in payload) || !("events" in payload))
-    return;
-  replaceItinerary(payload as GeneratedItinerary);
+function applySyncSnapshot(nextSnapshot: TripSnapshot) {
+  applySnapshot(nextSnapshot);
 }
 const { assistantOpen, discussionPreview, showAddEvent, showInvite } = useTripModals();
 const discussionMessages = ref<{ role: "user" | "assistant"; content: string }[]>([]);
@@ -101,7 +123,15 @@ function closeDiscussionPreview() {
 }
 const assistant = useTripAssistant(
   () =>
-    `${title.value}; ${dayTitle.value}; ${selectedEvents.value.map((event) => `${event.time} ${event.title} at ${event.place}`).join("; ")}`,
+    JSON.stringify({
+      title: title.value,
+      events: events.value.map(({ day, time, title: eventTitle, place }) => ({
+        day,
+        time,
+        title: eventTitle,
+        place,
+      })),
+    }),
   () => ({ title: title.value, days: days.value, events: events.value }),
   (plan) => {
     preview.implementationPreview.value = {
@@ -116,6 +146,7 @@ const assistant = useTripAssistant(
     assistantOpen.value = false;
     discussionPreview.value = true;
   },
+  () => tripSync.bootstrapped.value,
 );
 const {
   assistantNote,
@@ -125,6 +156,7 @@ const {
   implementationLoading: assistantImplementationLoading,
   sendMessage: sendAssistantMessage,
   implementPlan: implementAssistantPlan,
+  clearHistory: clearAssistantHistory,
 } = assistant;
 const previewDays = computed(() => preview.previewDays());
 const implementationDays = computed(() => preview.implementationDays());
@@ -149,11 +181,16 @@ function saveTitle() {
 function cancelTitle() {
   editingTitle.value = false;
 }
+function applyAssistantPlan() {
+  if (applyImplementationPlan()) clearAssistantHistory();
+}
 async function finishTrip() {
   await clearItinerary();
-  localStorage.removeItem("roam-trip-state");
-  localStorage.removeItem("roam-trip-title");
-  localStorage.removeItem("roam-deleted-event-ids");
+  await clearTripSnapshot(inviteCode.value);
+  const storageKeys = getTripStorageKeys(inviteCode.value);
+  localStorage.removeItem(storageKeys.state);
+  localStorage.removeItem(storageKeys.title);
+  localStorage.removeItem(storageKeys.deletedEventIds);
   sessionStorage.removeItem("roam-discussion:default");
   sessionStorage.removeItem("roam-discussion:used");
   await navigateTo("/", { replace: true });
@@ -180,6 +217,7 @@ function submitEvent(input: {
     <TripPageHeader
       :title="title"
       :crew="crew"
+      :role="role"
       :editing-title="editingTitle"
       :draft-title="draftTitle"
       :completed="completed"
@@ -203,6 +241,7 @@ function submitEvent(input: {
         :days="days"
         :day-title="dayTitle"
         :synced="synced"
+        :sync-status="syncStatus"
         @day="activeDay = $event"
         @select="selectEvent"
         @delete="removeEvent"
@@ -238,7 +277,7 @@ function submitEvent(input: {
         useDiscussionPlan();
         closeDiscussionPreview();
       "
-      @apply="applyImplementationPlan"
+      @apply="applyAssistantPlan"
       @close="closeDiscussionPreview"
       @cancel="
         implementationPreview = null;
@@ -252,6 +291,7 @@ function submitEvent(input: {
       :loading="assistantLoading"
       :error="assistantError"
       :implementation-loading="assistantImplementationLoading"
+      :can-implement="tripSync.bootstrapped.value"
       @update:note="assistantNote = $event"
       @send="sendAssistantMessage"
       @implement="implementAssistantPlan"
@@ -268,5 +308,4 @@ function submitEvent(input: {
   </div>
 </template>
 
-<style scoped src="~/assets/styles/components/modals.css"></style>
 <style scoped src="~/assets/styles/pages/trip.css"></style>

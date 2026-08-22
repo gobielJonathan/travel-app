@@ -2,7 +2,14 @@
 import { BsSimple } from "@coderoycc/bottom-sheet-wrappers";
 import VueMarkdown from "vue-markdown-render";
 import type { GeneratedItinerary } from "~/types/itinerary";
-import { clearItinerary, loadItinerary, saveItinerary } from "~/utils/itineraryStorage";
+import { useInvite } from "~/composables/useInvite";
+import {
+  clearItinerary,
+  getTripStorageKeys,
+  loadItinerary,
+  loadTripSnapshot,
+  saveItinerary,
+} from "~/utils/itineraryStorage";
 
 useHead({ title: "Plan Your Trip — Roam" });
 
@@ -16,18 +23,24 @@ const finalizing = ref(false);
 const finalizeError = ref("");
 const showExistingPlanDialog = ref(false);
 const existingPlanPending = ref(false);
+const { inviteCode, createNewWorkspace } = useInvite();
+const storageKeys = computed(() => getTripStorageKeys(inviteCode.value));
 
 function hasExistingTrip() {
-  return !!localStorage.getItem("roam-trip-state");
+  return !!localStorage.getItem(storageKeys.value.state);
 }
 
 async function startBlankPlan() {
   existingPlanPending.value = false;
   showExistingPlanDialog.value = false;
+  const previousWorkspaceCode = inviteCode.value;
+  const previousStorageKeys = getTripStorageKeys(previousWorkspaceCode);
   await clearItinerary();
-  localStorage.removeItem("roam-trip-state");
-  localStorage.removeItem("roam-trip-title");
-  localStorage.removeItem("roam-deleted-event-ids");
+  await clearTripSnapshot(previousWorkspaceCode);
+  localStorage.removeItem(previousStorageKeys.state);
+  localStorage.removeItem(previousStorageKeys.title);
+  localStorage.removeItem(previousStorageKeys.deletedEventIds);
+  createNewWorkspace();
   await navigateTo("/trip");
 }
 
@@ -38,7 +51,7 @@ async function keepExistingPlan() {
 }
 
 async function startBlankPlanWithCheck() {
-  if (hasExistingTrip() || (await loadItinerary())) {
+  if (hasExistingTrip() || (await loadItinerary()) || (await loadTripSnapshot(inviteCode.value))) {
     showExistingPlanDialog.value = true;
     return;
   }
@@ -61,12 +74,20 @@ async function startPlanning() {
   try {
     const itinerary = await $fetch<GeneratedItinerary | { needs: string }>("/api/ai/itinerary", {
       method: "POST",
-      body: { messages: messages.value },
+      body: { messages: messages.value, workspaceCode: inviteCode.value },
     });
     if ("needs" in itinerary) {
       finalizeError.value = `Before finalizing, tell Roam AI your ${itinerary.needs}.`;
       return;
     }
+    const previousWorkspaceCode = inviteCode.value;
+    const previousStorageKeys = getTripStorageKeys(previousWorkspaceCode);
+    await clearItinerary();
+    await clearTripSnapshot(previousWorkspaceCode);
+    localStorage.removeItem(previousStorageKeys.state);
+    localStorage.removeItem(previousStorageKeys.title);
+    localStorage.removeItem(previousStorageKeys.deletedEventIds);
+    createNewWorkspace();
     await saveItinerary(itinerary);
     await navigateTo("/trip?preview=1");
   } catch (requestError) {
@@ -182,4 +203,3 @@ async function startPlanning() {
 </template>
 
 <style scoped src="~/assets/styles/pages/index.css"></style>
-<style scoped src="~/assets/styles/components/modals.css"></style>

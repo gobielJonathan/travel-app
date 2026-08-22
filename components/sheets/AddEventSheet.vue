@@ -172,5 +172,3 @@ function submit() {
     </div>
   </BsSimple>
 </template>
-
-<style scoped src="~/assets/styles/components/modals.css"></style>

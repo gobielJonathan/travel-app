@@ -1,9 +1,11 @@
 import type { BillItem } from "~/types/trip";
 import { assertTravelPromptAllowed } from "~/server/utils/ai-gatekeeper";
+import { logAiUsage } from "~/server/utils/ai-usage";
 
-type ReceiptBody = { text?: unknown };
+type ReceiptBody = { text?: unknown; workspaceCode?: unknown };
 type DeepSeekResponse = {
   choices?: Array<{ message?: { content?: string } }>;
+  usage?: unknown;
 };
 
 const receiptSchema = `{"items":[{"name":"string","price":0.00,"member":"","settled":false}]}`;
@@ -49,6 +51,7 @@ function parseReceiptItems(content: string): BillItem[] | null {
 
 export default defineEventHandler(async (event) => {
   const body = await readBody<ReceiptBody>(event);
+  const workspaceCode = body.workspaceCode;
   const text = typeof body.text === "string" ? body.text.trim() : "";
   if (!text || text.length > 12000) {
     throw createError({
@@ -57,7 +60,11 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  await assertTravelPromptAllowed(event, `Travel receipt analysis request:\n${text}`);
+  await assertTravelPromptAllowed(
+    event,
+    `Travel receipt analysis request:\n${text}`,
+    workspaceCode,
+  );
 
   const config = useRuntimeConfig(event);
   if (!config.deepseekApiKey) {
@@ -84,9 +91,10 @@ export default defineEventHandler(async (event) => {
         temperature: 0,
       },
     });
+    logAiUsage(workspaceCode, "else", response.usage);
     const content = response.choices?.[0]?.message?.content?.trim();
-    const items = content ? parseReceiptItems(content) : null;
-    if (!items) throw new Error("Invalid receipt analysis response");
+    if (!content) throw new Error("Invalid receipt analysis response");
+    const items = parseReceiptItems(content);
     return { items };
   } catch (error) {
     const providerError = error as { status?: number };

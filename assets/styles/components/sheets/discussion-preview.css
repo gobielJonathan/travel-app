@@ -100,7 +100,7 @@
 
 .preview-day {
   display: grid;
-  grid-template-columns: 48px 1fr;
+  grid-template-columns: 64px 1fr;
   gap: 12px;
 }
 
@@ -119,8 +119,9 @@
   margin-top: 4px;
   color: var(--preview-ink);
   font:
-    400 35px/0.8 Instrument Serif,
+    400 22px/0.95 Instrument Serif,
     serif;
+  letter-spacing: -0.03em;
 }
 
 .preview-day-stops {

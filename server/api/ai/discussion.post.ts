@@ -1,4 +1,5 @@
 import { assertTravelPromptAllowed } from "~/server/utils/ai-gatekeeper";
+import { logAiUsage } from "~/server/utils/ai-usage";
 
 type DiscussionMessage = { role: "user" | "assistant"; content: string };
 
@@ -6,10 +7,12 @@ type DiscussionBody = {
   message?: unknown;
   context?: unknown;
   history?: unknown;
+  workspaceCode?: unknown;
 };
 
 export default defineEventHandler(async (event) => {
   const body = await readBody<DiscussionBody>(event);
+  const workspaceCode = body.workspaceCode;
   const message = typeof body.message === "string" ? body.message.trim() : "";
   if (!message || message.length > 4000) {
     throw createError({ statusCode: 400, statusMessage: "message must contain 1–4000 characters" });
@@ -21,7 +24,7 @@ export default defineEventHandler(async (event) => {
           if (!item) return false;
           return ["user", "assistant"].includes(item.role) && !!item.content;
         })
-        .slice(-4)
+        .slice(-5)
         .map((item) => ({ ...item, content: item.content.slice(0, 800) }))
     : [];
   const context = typeof body.context === "string" ? body.context.slice(0, 3000) : "";
@@ -37,6 +40,7 @@ export default defineEventHandler(async (event) => {
     ]
       .filter(Boolean)
       .join("\n\n"),
+    workspaceCode,
   );
 
   const config = useRuntimeConfig(event);
@@ -45,30 +49,31 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    const response = await $fetch<{ choices?: Array<{ message?: { content?: string } }> }>(
-      "https://api.deepseek.com/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${config.deepseekApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: {
-          model: config.deepseekModel || "deepseek-chat",
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are Roam AI, a concise travel planning assistant. Give practical, specific suggestions. Keep replies under 120 words. Only discuss travel and trip planning.",
-            },
-            ...(context ? [{ role: "user" as const, content: `Trip context:\n${context}` }] : []),
-            ...history.slice(-10),
-            { role: "user" as const, content: message },
-          ],
-          temperature: 0.5,
-        },
+    const response = await $fetch<{
+      choices?: Array<{ message?: { content?: string } }>;
+      usage?: unknown;
+    }>("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.deepseekApiKey}`,
+        "Content-Type": "application/json",
       },
-    );
+      body: {
+        model: config.deepseekModel || "deepseek-chat",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are Roam AI, a concise travel planning assistant. Give practical, specific suggestions. Keep replies under 120 words. Only discuss travel and trip planning.",
+          },
+          ...(context ? [{ role: "user" as const, content: `Trip context:\n${context}` }] : []),
+          ...history,
+          { role: "user" as const, content: message },
+        ],
+        temperature: 0.5,
+      },
+    });
+    logAiUsage(workspaceCode, "instructions", response.usage);
     const reply = response.choices?.[0]?.message?.content?.trim();
     if (!reply) throw new Error("Empty AI response");
     return { reply };

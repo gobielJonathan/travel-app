@@ -4,7 +4,7 @@ import { BsSimple } from "@coderoycc/bottom-sheet-wrappers";
 import type { GeneratedItinerary } from "~/types/itinerary";
 
 type Message = { role: "user" | "assistant"; content: string };
-type PreviewDay = { day: number; events: GeneratedItinerary["events"] };
+type PreviewDay = { day: number; date: string; events: GeneratedItinerary["events"] };
 
 const props = defineProps<{
   modelValue: boolean;
@@ -62,7 +62,7 @@ const emit = defineEmits<{
             class="preview-day"
           >
             <div class="preview-day-marker">
-              <span>Day</span><strong>{{ day.day }}</strong>
+              <span>Date</span><strong>{{ day.date }}</strong>
             </div>
             <div class="preview-day-stops">
               <article

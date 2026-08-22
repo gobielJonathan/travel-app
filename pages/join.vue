@@ -7,7 +7,7 @@ const cameraError = ref(false);
 const scannerOpen = ref(false);
 const video = ref<HTMLVideoElement>();
 const canvas = ref<HTMLCanvasElement>();
-const { join } = useInvite();
+const { inviteCode, join } = useInvite();
 let stream: MediaStream | undefined;
 let animationFrame = 0;
 
@@ -15,17 +15,23 @@ useHead({ title: "Join a Trip — Roam" });
 
 async function openScanner() {
   error.value = "";
+  cameraError.value = false;
   if (!window.confirm("Allow Roam to use your camera to scan the invitation QR code?")) return;
 
   try {
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { exact: "environment" } },
+      audio: false,
+      video: { facingMode: { ideal: "environment" } },
     });
     scannerOpen.value = true;
     await nextTick();
-    video.value?.play();
+    const currentVideo = video.value;
+    if (!currentVideo || !stream) throw new Error("Camera preview unavailable.");
+    currentVideo.srcObject = stream;
+    await currentVideo.play();
     scanFrame();
   } catch {
+    closeScanner();
     cameraError.value = true;
   }
 }
@@ -34,7 +40,11 @@ function scanFrame() {
   if (!scannerOpen.value || !video.value || !canvas.value) return;
   const currentVideo = video.value;
   const currentCanvas = canvas.value;
-  if (currentVideo.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+  if (
+    currentVideo.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+    currentVideo.videoWidth > 0 &&
+    currentVideo.videoHeight > 0
+  ) {
     currentCanvas.width = currentVideo.videoWidth;
     currentCanvas.height = currentVideo.videoHeight;
     const context = currentCanvas.getContext("2d");
@@ -48,7 +58,7 @@ function scanFrame() {
       if (result) {
         if (join(result.data)) {
           closeScanner();
-          navigateTo("/trip");
+          navigateTo(`/trip?room=${encodeURIComponent(inviteCode.value)}`);
           return;
         }
         error.value = "Code not recognized. Check the code and try again.";
@@ -63,6 +73,10 @@ function closeScanner() {
   cancelAnimationFrame(animationFrame);
   stream?.getTracks().forEach((track) => track.stop());
   stream = undefined;
+  if (video.value) {
+    video.value.pause();
+    video.value.srcObject = null;
+  }
 }
 
 function closeCameraError() {
@@ -144,4 +158,4 @@ onUnmounted(closeScanner);
   </main>
 </template>
 
-<style src="~/assets/styles/pages/join.css"></style>
+<style scoped src="~/assets/styles/pages/join.css"></style>

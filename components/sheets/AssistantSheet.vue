@@ -10,6 +10,7 @@ const props = defineProps<{
   loading: boolean;
   error: string;
   implementationLoading: boolean;
+  canImplement: boolean;
 }>();
 function updateOpen(open: boolean) {
   emit("update:modelValue", open);
@@ -67,6 +68,7 @@ const emit = defineEmits<{
             :disabled="
               props.loading ||
               props.implementationLoading ||
+              !props.canImplement ||
               !props.messages.some((message) => message.role === 'user')
             "
             @click="emit('implement')"

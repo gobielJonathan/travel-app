@@ -1,12 +1,13 @@
 import { loadItinerary } from "~/utils/itineraryStorage";
+import { getTripStorageKeys, loadTripSnapshot } from "~/utils/itineraryStorage";
 
 export default defineNuxtRouteMiddleware(async () => {
-  const { joined } = useInvite();
-  if (joined.value) return;
-  const hasTripState = Boolean(localStorage.getItem("roam-trip-state"));
+  const { inviteCode, joined, role } = useInvite();
+  if (joined.value || role.value === "crew") return;
+  const hasTripState = Boolean(localStorage.getItem(getTripStorageKeys(inviteCode.value).state));
   let hasItinerary = false;
   try {
-    hasItinerary = Boolean(await loadItinerary());
+    hasItinerary = Boolean((await loadItinerary()) || (await loadTripSnapshot(inviteCode.value)));
   } catch {
     hasItinerary = false;
   }

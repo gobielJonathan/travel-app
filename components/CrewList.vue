@@ -16,7 +16,10 @@ const emit = defineEmits<{ invite: [] }>();
         <div :class="['crew-avatar', member.tone]">{{ member.initials }}</div>
         <div>
           <strong>{{ member.name }}</strong>
-          <p>{{ member.role }}</p>
+          <p>
+            <span class="crew-presence" :class="{ online: member.online }" aria-hidden="true"></span
+            >{{ member.online ? "Online" : "Offline" }}
+          </p>
         </div>
       </div>
     </div>
@@ -78,6 +81,19 @@ const emit = defineEmits<{ invite: [] }>();
   margin: 4px 0 0;
   color: var(--muted);
   font-size: 10px;
+}
+.crew-presence {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--muted);
+  vertical-align: 1px;
+}
+.crew-presence.online {
+  background: #4f9b63;
+  box-shadow: 0 0 0 2px #4f9b6330;
 }
 .crew-invite {
   min-height: 44px;

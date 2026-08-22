@@ -6,6 +6,7 @@ defineProps<{
   days: { label: string; date: string; month: string; count: number }[];
   dayTitle: string;
   synced: boolean;
+  syncStatus: string;
 }>();
 const emit = defineEmits<{
   day: [number];
@@ -46,7 +47,6 @@ const emit = defineEmits<{
           <NuxtLink class="ghost-btn" :to="`/trip-map?day=${activeDay}`">⌖ View map</NuxtLink>
           <button class="primary-btn" type="button" @click="emit('add')">＋ Add event</button>
         </div>
-        <div class="sync-state" :class="{ pending: !synced }"></div>
       </div>
       <div class="timeline">
         <article v-for="(event, index) in events" :key="event.id" class="event-row">
@@ -109,12 +109,7 @@ const emit = defineEmits<{
   padding: 9px 12px;
   font-size: 10px;
 }
-.sync-state {
-  color: var(--blue);
-  font:
-    9px IBM Plex Mono,
-    monospace;
-}
+
 @media (max-width: 800px) {
   .timeline-head {
     display: block;
@@ -171,9 +166,6 @@ const emit = defineEmits<{
   }
   .timeline-actions .primary-btn {
     box-shadow: 3px 3px 0 var(--night);
-  }
-  .sync-state {
-    display: none;
   }
 }
 </style>

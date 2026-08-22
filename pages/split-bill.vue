@@ -8,6 +8,7 @@ const crew: { initials: string; name: string; role: string; tone?: string }[] = 
 const bills = ref<{ title: string; date: string; total: number; items: number }[]>([]);
 const items = ref<BillItem[]>([]);
 const translations = ref<Record<string, string>>({});
+const { inviteCode } = useInvite();
 const { processing, scan: analyzeReceipt } = useReceiptScanner();
 const translating = ref(false);
 const message = ref("");
@@ -52,7 +53,10 @@ async function translateReceipt() {
   try {
     translations.value = {
       ...translations.value,
-      ...(await translateItems(items.value.map((item) => item.name))),
+      ...(await translateItems(
+        items.value.map((item) => item.name),
+        inviteCode.value,
+      )),
     };
     message.value = "English translations ready.";
   } catch {
@@ -430,6 +434,7 @@ h2 {
 }
 .split-page {
   max-width: 1320px;
+  margin: 0 auto;
   padding-bottom: 72px;
 }
 .split-topbar {

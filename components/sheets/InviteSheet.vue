@@ -41,5 +41,3 @@ function closeSheet(open: boolean) {
     </div>
   </BsSimple>
 </template>
-
-<style scoped src="~/assets/styles/components/modals.css"></style>

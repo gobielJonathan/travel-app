@@ -22,7 +22,7 @@ function writeCache(cache: TranslationCache) {
   }
 }
 
-export async function translateItems(items: string[]) {
+export async function translateItems(items: string[], workspaceCode?: string) {
   const unique = [...new Set(items.map((item) => item.trim()).filter(Boolean))];
   const cache = readCache();
   const translations: Record<string, string> = {};
@@ -35,7 +35,7 @@ export async function translateItems(items: string[]) {
   if (!missing.length) return translations;
   const response = await $fetch<{ translations: Record<string, string> }>("/api/ai/translate", {
     method: "POST",
-    body: { items: missing, targetLanguage: "English" },
+    body: { items: missing, targetLanguage: "English", workspaceCode },
   });
   for (const item of missing) {
     const translation = response.translations[item] || item;

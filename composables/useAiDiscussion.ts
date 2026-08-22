@@ -1,4 +1,4 @@
-import { ref } from "vue";
+import { nextTick, ref } from "vue";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -7,10 +7,11 @@ type DiscussionOptions = {
   cacheKey?: string;
 };
 
-const MAX_HISTORY_MESSAGES = 4;
+const MAX_HISTORY_MESSAGES = 5;
 const MAX_MESSAGE_LENGTH = 800;
 
 export function useAiDiscussion(options: DiscussionOptions = {}) {
+  const { inviteCode } = useInvite();
   const storageKey = `roam-discussion:${options.cacheKey ?? "default"}`;
   const messages = ref<Message[]>(JSON.parse(sessionStorage.getItem(storageKey) ?? "[]"));
 
@@ -41,7 +42,7 @@ export function useAiDiscussion(options: DiscussionOptions = {}) {
     try {
       const response = await $fetch<{ reply: string }>("/api/ai/discussion", {
         method: "POST",
-        body: { message: prompt, context, history },
+        body: { message: prompt, context, history, workspaceCode: inviteCode.value },
       });
       messages.value.push({ role: "assistant", content: response.reply });
       sessionStorage.setItem(cacheKey, response.reply);
@@ -54,5 +55,10 @@ export function useAiDiscussion(options: DiscussionOptions = {}) {
     }
   }
 
-  return { messages, loading, error, ask };
+  function clearHistory() {
+    messages.value = [];
+    void nextTick(() => sessionStorage.removeItem(storageKey));
+  }
+
+  return { messages, loading, error, ask, clearHistory };
 }
