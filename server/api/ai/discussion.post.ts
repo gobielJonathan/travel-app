@@ -1,3 +1,5 @@
+import { assertTravelPromptAllowed } from "~/server/utils/ai-gatekeeper";
+
 type DiscussionMessage = { role: "user" | "assistant"; content: string };
 
 type DiscussionBody = {
@@ -13,11 +15,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "message must contain 1–4000 characters" });
   }
 
-  const config = useRuntimeConfig(event);
-  if (!config.deepseekApiKey) {
-    throw createError({ statusCode: 503, statusMessage: "AI provider is not configured" });
-  }
-
   const history = Array.isArray(body.history)
     ? body.history
         .filter((item: DiscussionMessage | undefined): item is DiscussionMessage => {
@@ -28,6 +25,24 @@ export default defineEventHandler(async (event) => {
         .map((item) => ({ ...item, content: item.content.slice(0, 800) }))
     : [];
   const context = typeof body.context === "string" ? body.context.slice(0, 3000) : "";
+
+  await assertTravelPromptAllowed(
+    event,
+    [
+      `Current request:\n${message}`,
+      context ? `Trip context:\n${context}` : "",
+      history.length
+        ? `Conversation history:\n${history.map((item) => `${item.role}: ${item.content}`).join("\n")}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n"),
+  );
+
+  const config = useRuntimeConfig(event);
+  if (!config.deepseekApiKey) {
+    throw createError({ statusCode: 503, statusMessage: "AI provider is not configured" });
+  }
 
   try {
     const response = await $fetch<{ choices?: Array<{ message?: { content?: string } }> }>(

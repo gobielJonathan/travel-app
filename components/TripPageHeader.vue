@@ -18,8 +18,10 @@ const emit = defineEmits<{
 <template>
   <header class="topbar">
     <NuxtLink class="brand" to="/"><span class="brand-mark">✦</span> roam</NuxtLink>
-    <nav><NuxtLink class="nav-active" to="/trip">My plans</NuxtLink></nav>
-    <div class="mobile-header-label">{{ props.title }}</div>
+    <div class="topbar-center">
+      <nav><NuxtLink class="nav-active" to="/trip">My plans</NuxtLink></nav>
+      <div class="mobile-header-label">{{ props.title }}</div>
+    </div>
     <div class="top-actions">
       <div class="avatar">{{ props.crew[0]?.initials || "?" }}</div>
       <span class="user-name">{{ props.crew[0]?.name || "Your trip" }}</span>
@@ -47,15 +49,11 @@ const emit = defineEmits<{
       </p>
     </div>
     <div class="hero-actions">
-      <button class="ghost-btn" @click="emit('askAssistant')">✦ Ask Roam AI</button
-      ><button
-        v-if="!props.completed"
-        class="ghost-btn"
-        type="button"
-        @click="emit('completeTrip')"
-      >
-        Finish trip</button
-      ><span v-else class="trip-completed">Trip finished</span>
+      <button class="primary-btn" type="button" @click="emit('askAssistant')">✦ Ask Roam AI</button>
+      <button v-if="!props.completed" class="ghost-btn" type="button" @click="emit('completeTrip')">
+        Finish trip
+      </button>
+      <span v-else class="trip-completed">Trip finished</span>
     </div>
   </section>
 </template>
@@ -63,6 +61,52 @@ const emit = defineEmits<{
 .topbar,
 .hero-row {
   position: relative;
+}
+.topbar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  height: 64px;
+  column-gap: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.topbar .brand {
+  white-space: nowrap;
+}
+.topbar-center {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.topbar nav {
+  display: none;
+  gap: 28px;
+  font:
+    500 10px IBM Plex Mono,
+    monospace;
+  text-transform: uppercase;
+}
+.topbar nav a {
+  color: var(--muted);
+  text-decoration: none;
+}
+.topbar nav .router-link-active,
+.topbar nav .nav-active {
+  color: var(--night);
+}
+.mobile-header-label {
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  text-align: center;
+}
+.top-actions {
+  min-width: 0;
+  margin-left: 0;
+}
+.user-name {
+  display: none;
 }
 .trip-title {
   border: 0;
@@ -81,30 +125,82 @@ const emit = defineEmits<{
     14px Manrope,
     sans-serif;
 }
+.hero-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 22px;
+  padding: 40px 0 24px;
+}
+.hero-row > div:first-child {
+  min-width: 0;
+}
 .hero-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
-.hero-actions .primary-btn {
-  grid-column: 1 / -1;
+.hero-actions .primary-btn,
+.hero-actions .ghost-btn {
+  width: 100%;
+}
+.trip-completed {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font:
+    500 10px IBM Plex Mono,
+    monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 @media (min-width: 801px) {
+  .topbar {
+    height: 78px;
+    column-gap: 24px;
+  }
+  .topbar-center {
+    justify-content: flex-start;
+  }
+  .topbar nav {
+    display: flex;
+  }
+  .user-name {
+    display: inline;
+    max-width: 18ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .hero-row {
+    flex-direction: row;
+    align-items: end;
+    justify-content: space-between;
+    gap: 40px;
+    padding: 66px 0 28px;
+  }
   .hero-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-self: end;
-    align-items: start;
-    width: min(100%, 560px);
+    flex: 0 0 auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
     gap: 10px;
+    max-width: 100%;
+    padding-left: 28px;
+    border-left: 1px solid var(--line);
   }
-  .hero-actions > * {
-    width: 100%;
+  .hero-actions .primary-btn,
+  .hero-actions .ghost-btn {
+    width: auto;
     min-height: 48px;
-    align-self: start;
+    padding-inline: 16px;
+    white-space: nowrap;
   }
-  .hero-actions .primary-btn {
-    grid-column: auto;
+  .trip-completed {
+    min-height: 48px;
   }
 }
 </style>

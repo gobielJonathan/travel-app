@@ -26,7 +26,7 @@
   font-size: 13px;
 }
 .event-detail .map-action {
-    display: inline-flex;
+  display: inline-flex;
   min-height: 44px;
   align-items: center;
   justify-content: center;

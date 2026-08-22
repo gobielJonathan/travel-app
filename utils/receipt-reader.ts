@@ -3,7 +3,7 @@ let worker: {
   recognize: (image: File) => Promise<{ data: { text: string } }>;
 } | null = null;
 
-export default async function readReceipt(file: File) {
+export default async function readReceiptText(file: File) {
   try {
     if (!worker) {
       const { createWorker } = await import("tesseract.js");
@@ -16,26 +16,12 @@ export default async function readReceipt(file: File) {
 
     const text = (await worker.recognize(file)).data.text;
 
-    const items = text
-      .split("\n")
-      .map((line) => line.trim().match(/^(.+?)\\s+(\\d+[.,]\\d{2})$/))
-      .flatMap((match) =>
-        match?.[1] && match[2]
-          ? [
-              {
-                name: match[1],
-                price: Number(match[2].replace(",", ".")),
-                member: "JM",
-                settled: false,
-              },
-            ]
-          : [],
-      );
-
-    return items;
+    return text;
   } catch (err) {
     throw err;
   } finally {
-    await worker?.terminate();
+    const activeWorker = worker;
+    worker = null;
+    await activeWorker?.terminate();
   }
 }

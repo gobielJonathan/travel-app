@@ -5,7 +5,6 @@ import { useTripAssistant } from "~/composables/useTripAssistant";
 import { useItineraryPreview } from "~/composables/useItineraryPreview";
 import { clearItinerary, loadItinerary } from "~/utils/itineraryStorage";
 import { useTripSync } from "~/composables/useTripSync";
-import readReceipt from "~/utils/receipt-reader";
 import { useTripModals } from "~/composables/useTripModals";
 import { useTripEventEditor } from "~/composables/useTripEventEditor";
 import AssistantSheet from "~/components/sheets/AssistantSheet.vue";
@@ -139,8 +138,6 @@ const {
   saveEventDetails,
   removeEvent,
 } = useTripEventEditor(days, updateEvent, deleteEvent);
-const receiptProcessing = ref(false);
-const receiptMessage = ref("");
 function editTitle() {
   draftTitle.value = title.value;
   editingTitle.value = true;
@@ -163,29 +160,7 @@ async function finishTrip() {
 }
 
 function scanReceipt() {
-  receiptMessage.value = "";
-}
-async function handleReceipt(event: Event) {
-  const file = (event.target as HTMLInputElement).files?.[0];
-  if (!file || !selectedEvent.value) return;
-  if (!file.type.startsWith("image/") || file.size > 10 * 1024 * 1024) {
-    receiptMessage.value = "Use an image smaller than 10 MB.";
-    return;
-  }
-  receiptProcessing.value = true;
-  try {
-    const items = await readReceipt(file);
-    if (!items.length) {
-      receiptMessage.value = "No priced items found. Try a clearer receipt.";
-      return;
-    }
-    selectedEvent.value.bill.push(...items);
-    receiptMessage.value = `${items.length} item${items.length === 1 ? "" : "s"} added.`;
-  } catch {
-    receiptMessage.value = "Receipt scan failed. Check image format or try another image.";
-  } finally {
-    receiptProcessing.value = false;
-  }
+  void navigateTo("/split-bill");
 }
 function submitEvent(input: {
   title: string;
@@ -243,14 +218,11 @@ function submitEvent(input: {
       :event="selectedEvent"
       :date-time="draftEventDateTime"
       :notes="draftEventNotes"
-      :receipt-processing="receiptProcessing"
-      :receipt-message="receiptMessage"
       @close="selectedEvent = null"
       @update:date-time="draftEventDateTime = $event"
       @update:notes="draftEventNotes = $event"
       @save="saveEventDetails"
       @scan="scanReceipt"
-      @receipt="handleReceipt"
     />
     <DiscussionPreviewSheet
       v-model="discussionPreview"

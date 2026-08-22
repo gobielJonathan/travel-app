@@ -5,8 +5,6 @@ const props = defineProps<{
   event: TripEvent | null;
   dateTime: string;
   notes: string;
-  receiptProcessing: boolean;
-  receiptMessage: string;
 }>();
 function closeSheet(open: boolean) {
   if (!open) emit("close");
@@ -17,12 +15,9 @@ const emit = defineEmits<{
   "update:notes": [string];
   save: [];
   scan: [];
-  receipt: [Event];
 }>();
-const receiptFile = ref<HTMLInputElement | null>(null);
 function scanReceipt() {
   emit("scan");
-  receiptFile.value?.click();
 }
 </script>
 <template>
@@ -103,21 +98,7 @@ function scanReceipt() {
           ><strong>{{
             props.event.bill.length ? `${props.event.bill.length} items added` : "No bill added"
           }}</strong
-          ><input
-            ref="receiptFile"
-            class="visually-hidden"
-            type="file"
-            accept="image/*"
-            @change="emit('receipt', $event)"
-          /><button
-            class="primary-btn detail-action"
-            :disabled="props.receiptProcessing"
-            @click="scanReceipt"
-          >
-            {{ props.receiptProcessing ? "Scanning…" : "Scan receipt" }}</button
-          ><small v-if="props.receiptMessage" class="receipt-message">{{
-            props.receiptMessage
-          }}</small>
+          ><button class="primary-btn detail-action" @click="scanReceipt">Scan receipt</button>
         </div>
         <button class="primary-btn detail-action" @click="emit('save')">Save details</button>
       </aside>

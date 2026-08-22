@@ -50,6 +50,18 @@
   gap: 20px;
   overflow-x: auto;
   margin-top: 32px;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+.landing-stats::-webkit-scrollbar {
+  height: 2px;
+}
+.landing-stats::-webkit-scrollbar-track {
+  background: transparent;
+}
+.landing-stats::-webkit-scrollbar-thumb {
+  background: var(--line);
 }
 .landing-stats > div {
   flex: 0 0 116px;
@@ -268,6 +280,7 @@
   }
   .landing-stats {
     overflow: visible;
+    padding-bottom: 0;
   }
   .landing-stats > div {
     flex: initial;

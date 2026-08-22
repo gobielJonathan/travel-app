@@ -1,4 +1,5 @@
 import { isGeneratedItinerary, type GeneratedItinerary } from "~/types/itinerary";
+import { assertTravelPromptAllowed } from "~/server/utils/ai-gatekeeper";
 
 type DiscussionMessage = { role: "user" | "assistant"; content: string };
 type PlanBody = { messages?: unknown; itinerary?: unknown };
@@ -23,6 +24,11 @@ export default defineEventHandler(async (event) => {
     .map((message) => `${message.role}: ${message.content.slice(0, 800)}`)
     .join("\n");
   if (!discussion) throw createError({ statusCode: 400, statusMessage: "Discussion is required" });
+
+  await assertTravelPromptAllowed(
+    event,
+    `Trip planning change request:\n${discussion}\n\nExisting trip plan:\n${JSON.stringify(itinerary).slice(0, 7000)}`,
+  );
 
   const config = useRuntimeConfig(event);
   if (!config.deepseekApiKey)
