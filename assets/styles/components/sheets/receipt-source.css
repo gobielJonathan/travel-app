@@ -1,0 +1,143 @@
+.receipt-source-sheet .bsw-bottom-sheet-panel {
+  background: var(--night);
+  color: var(--paper);
+}
+
+.receipt-source-dialog {
+  display: grid;
+  gap: 1rem;
+  padding: 28px 20px calc(24px + env(safe-area-inset-bottom));
+}
+
+.receipt-source-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.receipt-source-heading .section-label {
+  margin-bottom: 10px;
+  color: #a9b9b3;
+}
+
+.receipt-source-mark {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--orange);
+  color: var(--orange);
+  font-size: 21px;
+}
+
+.receipt-source-dialog h2 {
+  margin: 0;
+  color: var(--white);
+  font:
+    400 38px/0.95 Instrument Serif,
+    serif;
+}
+
+.receipt-source-intro {
+  margin: 0 0 8px;
+  color: #b5cfca;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.receipt-source-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.receipt-source-actions button {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: 12px;
+  min-height: 76px;
+  align-items: center;
+  border: 1px solid #ffffff2b;
+  background: #ffffff08;
+  padding: 14px;
+  color: var(--white);
+  text-align: left;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+
+.receipt-source-actions button:hover {
+  border-color: var(--orange);
+  background: #e26d451a;
+  transform: translateX(3px);
+}
+
+.receipt-source-actions button:focus-visible {
+  outline-color: var(--yellow);
+}
+
+.receipt-source-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid var(--orange);
+  color: var(--orange);
+  font-size: 24px;
+}
+
+.receipt-source-icon svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
+.receipt-source-actions strong,
+.receipt-source-actions small {
+  display: block;
+}
+
+.receipt-source-actions strong {
+  font-size: 12px;
+}
+
+.receipt-source-actions small {
+  margin-top: 4px;
+  color: #b5cfca;
+  font-size: 10px;
+}
+
+.receipt-source-arrow {
+  color: var(--orange);
+  font-size: 24px;
+  line-height: 1;
+}
+
+.receipt-source-cancel {
+  width: fit-content;
+  min-height: 44px;
+  justify-self: end;
+  border: 0;
+  background: transparent;
+  padding: 8px 0;
+  color: #b5cfca;
+  font:
+    500 10px IBM Plex Mono,
+    monospace;
+  text-transform: uppercase;
+}
+
+@media (width <= 800px) {
+  html body .bsw-bottom-sheet-content-inner > * {
+    flex: unset;
+    min-height: 0;
+    max-height: 0;
+  }
+}

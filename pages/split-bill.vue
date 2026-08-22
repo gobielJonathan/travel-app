@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ReceiptSourceSheet from "~/components/sheets/ReceiptSourceSheet.vue";
 import type { BillItem } from "~/types/trip";
 import { translateItems } from "~/utils/translation-cache";
 
@@ -12,7 +13,10 @@ const { inviteCode } = useInvite();
 const { processing, scan: analyzeReceipt } = useReceiptScanner();
 const translating = ref(false);
 const message = ref("");
-const input = ref<HTMLInputElement | null>(null);
+const receiptCurrency = ref("$");
+const receiptSourceOpen = ref(false);
+const uploadInput = ref<HTMLInputElement | null>(null);
+const cameraInput = ref<HTMLInputElement | null>(null);
 
 const subtotal = computed(() => items.value.reduce((sum, item) => sum + item.price, 0));
 const assigned = computed(
@@ -27,8 +31,13 @@ const crewTotals = computed(() =>
   })),
 );
 
-function addCameraReceipt() {
-  input.value?.click();
+function openReceiptSource() {
+  if (!processing.value) receiptSourceOpen.value = true;
+}
+function chooseReceiptSource(source: "upload" | "camera") {
+  receiptSourceOpen.value = false;
+  const input = source === "upload" ? uploadInput.value : cameraInput.value;
+  input?.click();
 }
 async function scanReceipt(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0];
@@ -36,10 +45,11 @@ async function scanReceipt(event: Event) {
   message.value = "Reading and analyzing receipt…";
   try {
     const scanned = await analyzeReceipt(file);
-    if (!scanned.length) message.value = "No priced items found.";
+    receiptCurrency.value = scanned.currency;
+    if (!scanned.items.length) message.value = "No priced items found.";
     else {
-      items.value = scanned;
-      message.value = `${scanned.length} items recognized by Roam AI.`;
+      items.value = scanned.items;
+      message.value = `${scanned.items.length} items recognized by Roam AI.`;
     }
   } catch (error) {
     message.value = error instanceof Error ? error.message : "Receipt analysis failed.";
@@ -83,18 +93,26 @@ function removeItem(index: number) {
           <h1>Split the bill,<br /><em>keep the trip easy.</em></h1>
           <p>Scan receipt, assign items, settle up with crew.</p>
         </div>
-        <button class="primary-btn" :disabled="processing" @click="addCameraReceipt">
+        <button class="primary-btn" :disabled="processing" @click="openReceiptSource">
           {{ processing ? "Reading…" : "Scan receipt" }}
         </button>
       </section>
       <input
-        ref="input"
+        ref="uploadInput"
+        class="hidden-input"
+        type="file"
+        accept="image/*"
+        @change="scanReceipt"
+      />
+      <input
+        ref="cameraInput"
         class="hidden-input"
         type="file"
         accept="image/*"
         capture="environment"
         @change="scanReceipt"
       />
+      <ReceiptSourceSheet v-model="receiptSourceOpen" @select="chooseReceiptSource" />
       <p v-if="message" class="split-message">{{ message }}</p>
       <section class="split-layout">
         <div class="split-main">
@@ -115,7 +133,7 @@ function removeItem(index: number) {
             <div v-for="(item, index) in items" :key="`${item.name}-${index}`" class="bill-item">
               <input v-model="item.name" aria-label="Receipt item name" />
               <small v-if="translations[item.name]">{{ translations[item.name] }}</small>
-              <strong>${{ item.price.toFixed(2) }}</strong>
+              <strong>{{ receiptCurrency }}{{ item.price.toFixed(2) }}</strong>
               <select v-model="item.member" aria-label="Assign crew member">
                 <option v-for="member in crew" :key="member.initials" :value="member.initials">
                   {{ member.initials }}
@@ -130,13 +148,14 @@ function removeItem(index: number) {
           <div class="summary-card">
             <div>
               <span class="section-label">Bill summary</span
-              ><strong>${{ subtotal.toFixed(2) }}</strong
+              ><strong>{{ receiptCurrency }}{{ subtotal.toFixed(2) }}</strong
               ><small>{{ items.length }} items · {{ assigned }} crew members</small>
             </div>
             <div class="summary-stat">
               <span>Unsettled</span
               ><b
-                >${{
+                >{{ receiptCurrency
+                }}{{
                   items
                     .filter((item) => !item.settled)
                     .reduce((sum, item) => sum + item.price, 0)
@@ -159,7 +178,7 @@ function removeItem(index: number) {
               <strong>{{ member.name }}</strong
               ><small>{{ member.role }}</small>
             </div>
-            <b>${{ member.total.toFixed(2) }}</b>
+            <b>{{ receiptCurrency }}{{ member.total.toFixed(2) }}</b>
           </div>
           <p v-if="!crew.length" class="empty-state">No crew members to assign yet.</p>
         </aside>

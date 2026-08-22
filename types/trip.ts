@@ -1,4 +1,5 @@
 export type BillItem = { name: string; price: number; member: string; settled: boolean };
+export type ReceiptAnalysis = { currency: string; items: BillItem[] };
 export type TripTodo = { text: string; assignee?: string; completed: boolean };
 export type TripEvent = {
   id: string;

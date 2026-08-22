@@ -1,4 +1,4 @@
-import type { BillItem } from "~/types/trip";
+import type { ReceiptAnalysis } from "~/types/trip";
 import readReceiptText from "~/utils/receipt-reader";
 
 export function useReceiptScanner() {
@@ -15,12 +15,13 @@ export function useReceiptScanner() {
       const text = await readReceiptText(file);
       if (!text.trim()) throw new Error("No receipt text found.");
 
-      const response = await $fetch<{ items: BillItem[] }>("/api/ai/receipt", {
+      const response = await $fetch<ReceiptAnalysis>("/api/ai/receipt", {
         method: "POST",
         body: { text, workspaceCode: inviteCode.value },
       });
-      if (!Array.isArray(response.items)) throw new Error("Receipt analysis unavailable.");
-      return response.items;
+      if (typeof response.currency !== "string" || !Array.isArray(response.items))
+        throw new Error("Receipt analysis unavailable.");
+      return response;
     } finally {
       processing.value = false;
     }
