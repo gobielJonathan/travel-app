@@ -197,23 +197,7 @@
   cursor: wait;
   opacity: 0.55;
 }
-.chat-prompts {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 6px;
-  overflow-x: auto;
-  padding: 14px 0;
-}
-.chat-prompts button {
-  flex: 0 0 auto;
-  min-height: 36px;
-  padding: 7px 9px;
-  border: 1px solid #ffffff30;
-  border-radius: 20px;
-  background: transparent;
-  color: var(--paper);
-  font-size: 10px;
-}
+
 .start-button {
   width: 100%;
   min-height: 44px;

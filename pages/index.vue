@@ -150,11 +150,7 @@ async function startPlanning() {
           ></textarea
           ><button @click="send">Send ↗</button>
         </div>
-        <div class="chat-prompts">
-          <button @click="note = 'A food-focused long weekend'">Food weekend</button
-          ><button @click="note = 'A relaxed city trip'">Slow city days</button
-          ><button @click="note = 'An outdoors trip nearby'">Outside time</button>
-        </div>
+        <div style="margin: 1rem 0;"></div>
         <button v-if="!hasDiscussion" class="start-button" @click="startPlanning">
           Start with a blank plan <span>→</span>
         </button>
