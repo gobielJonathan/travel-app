@@ -88,12 +88,5 @@ export default defineNuxtConfig({
   runtimeConfig: {
     deepseekApiKey: process.env.DEEPSEEK_API_KEY || "",
     deepseekModel: process.env.DEEPSEEK_MODEL || "deepseek-chat",
-    gatekeepApiKey:
-      process.env.CMD_API_KEY ||
-      process.env.GATEKEEP_API_KEY ||
-      process.env.NUXT_GATEKEEP_API_KEY ||
-      process.env.gatekeep_api_key ||
-      "",
-    gatekeepModel: process.env.GATEKEEP_MODEL || "stealth/ox-alpha",
   },
 });

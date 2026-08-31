@@ -11,7 +11,7 @@ type GatekeeperVerdict = {
 
 const MAX_GATEKEEPER_INPUT_LENGTH = 12000;
 const GATEKEEPER_TIMEOUT_MS = 20000;
-const GATEKEEPER_BASE_URL = "https://api.commandcode.ai/provider/v1";
+const DEEPSEEK_CHAT_COMPLETIONS_URL = "https://api.deepseek.com/chat/completions";
 
 const gatekeeperPrompt = `You are Roam's travel-plan request gatekeeper.
 Return JSON only in exactly this shape: {"allow":true} or {"allow":false}.
@@ -55,7 +55,7 @@ export async function assertTravelPromptAllowed(
   workspaceCode?: unknown,
 ) {
   const config = useRuntimeConfig(event);
-  if (!config.gatekeepApiKey) {
+  if (!config.deepseekApiKey) {
     throw createError({ statusCode: 503, statusMessage: "AI gatekeeper is not configured" });
   }
 
@@ -66,14 +66,15 @@ export async function assertTravelPromptAllowed(
 
   let verdict: GatekeeperVerdict | null = null;
   try {
-    const response = await $fetch<GatekeeperResponse>(`${GATEKEEPER_BASE_URL}/chat/completions`, {
+    const response = await $fetch<GatekeeperResponse>(DEEPSEEK_CHAT_COMPLETIONS_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${config.gatekeepApiKey}`,
+        Authorization: `Bearer ${config.deepseekApiKey}`,
         "Content-Type": "application/json",
       },
       body: {
-        model: config.gatekeepModel || "stealth/ox-alpha",
+        model: config.deepseekModel || "deepseek-chat",
+        response_format: { type: "json_object" },
         messages: [
           { role: "system", content: gatekeeperPrompt },
           {
@@ -88,9 +89,9 @@ export async function assertTravelPromptAllowed(
     });
     logAiUsage(workspaceCode, "else", response.usage);
     const content = response.choices?.[0]?.message?.content?.trim();
-    if (!content) throw new Error("CommandCode returned an empty gatekeeper response");
+    if (!content) throw new Error("DeepSeek returned an empty gatekeeper response");
     verdict = parseVerdict(content);
-    if (!verdict) throw new Error("CommandCode returned an invalid gatekeeper verdict");
+    if (!verdict) throw new Error("DeepSeek returned an invalid gatekeeper verdict");
   } catch (error) {
     const providerError = error as {
       status?: number;
